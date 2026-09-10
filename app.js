@@ -3,6 +3,7 @@ const SESSION_SIZE = 10;
 const STORAGE_KEY = 'tarotstep_progress_v2';
 
 let session=[], idx=0, correctCount=0, answered=false;
+let sessionConfusions={};
 
 function loadProgress(){
   const base={
@@ -11,6 +12,7 @@ function loadProgress(){
     totalCorrect:0,
     wrongQueue:{},
     cardStats:{},
+    confusionPairs:{},
     recentQuestionIds:[]
   };
   try {
@@ -20,6 +22,7 @@ function loadProgress(){
       ...saved,
       wrongQueue:saved.wrongQueue||{},
       cardStats:saved.cardStats||{},
+      confusionPairs:saved.confusionPairs||{},
       recentQuestionIds:saved.recentQuestionIds||[]
     } : base;
   } catch(e) { return base; }
@@ -74,10 +77,11 @@ function addUnique(target, candidates, limit, used){
   }
 }
 
-function sampleQuestions(){
+function sampleQuestions(preferredCardIds=[]){
   const level = getLevelInfo();
   const wrongIds = new Set(Object.keys(progress.wrongQueue).filter(id => progress.wrongQueue[id] > 0));
   const recent = new Set(progress.recentQuestionIds || []);
+  const preferred = new Set(preferredCardIds);
   const used = new Set();
   const picked = [];
 
@@ -88,11 +92,19 @@ function sampleQuestions(){
   const counselingFallback = shuffle(ALL_QUESTIONS.filter(q => q.type === '오늘의 상담'));
   addUnique(picked, counselingPool.length ? counselingPool : counselingFallback, 1, used);
 
+  // 헷갈린 카드 복습을 시작한 경우 해당 카드 문제를 먼저 배치
+  if(preferred.size){
+    const preferredPool = shuffle(ALL_QUESTIONS.filter(q =>
+      q.type !== '오늘의 상담' && preferred.has(q.card_id)
+    ));
+    addUnique(picked, preferredPool, Math.min(picked.length+6, SESSION_SIZE), used);
+  }
+
   // 1) 지난 오답은 최대 4문제 우선 복습
   const wrongPool = shuffle(ALL_QUESTIONS.filter(q =>
     q.type !== '오늘의 상담' && wrongIds.has(q.id)
   ));
-  addUnique(picked, wrongPool, Math.min(4, SESSION_SIZE), used);
+  addUnique(picked, wrongPool, Math.min(picked.length+4, SESSION_SIZE), used);
 
   // 2) 카드별 정답률이 낮은 취약 카드에서 최대 2문제
   const weakIds = getWeakCardIds().slice(0,12);
@@ -149,6 +161,78 @@ function updateCardStat(cardId, isCorrect){
   progress.cardStats[cardId] = s;
 }
 
+function isTarotCardId(value){
+  return typeof value === 'string' && /^[MWCSP]\d{2}$/.test(value);
+}
+
+function getPairKey(cardA, cardB){
+  return [cardA,cardB].sort().join('|');
+}
+
+function recordConfusion(q, choice){
+  const correctId=q.card_id;
+  const selectedId=choice.value_id;
+  if(!isTarotCardId(correctId) || !isTarotCardId(selectedId) || correctId===selectedId) return;
+
+  const key=getPairKey(correctId,selectedId);
+  progress.confusionPairs[key]=(progress.confusionPairs[key]||0)+1;
+
+  if(!sessionConfusions[key]){
+    sessionConfusions[key]={count:0,correctId,selectedId};
+  }
+  sessionConfusions[key].count += 1;
+}
+
+const MAJOR_NAMES=[
+  '바보','마법사','여사제','여황제','황제','교황','연인','전차','힘','은둔자',
+  '운명의 수레바퀴','정의','매달린 사람','죽음','절제','악마','탑','별','달','태양','심판','세계'
+];
+const SUIT_NAMES={W:'완드',C:'컵',S:'소드',P:'펜타클'};
+const COURT_NAMES={11:'페이지',12:'나이트',13:'퀸',14:'킹'};
+
+function getCardName(cardId){
+  if(!isTarotCardId(cardId)) return cardId || '카드';
+  if(cardId[0]==='M'){
+    return MAJOR_NAMES[Number(cardId.slice(1))] || cardId;
+  }
+  const suit=SUIT_NAMES[cardId[0]] || cardId[0];
+  const no=Number(cardId.slice(1));
+  if(no===1) return `${suit} 에이스`;
+  if(no>=2 && no<=10) return `${suit} ${no}`;
+  return `${suit} ${COURT_NAMES[no] || no}`;
+}
+
+function getCardKeywords(cardId){
+  const keywordQuestion=ALL_QUESTIONS.find(q =>
+    q.card_id===cardId &&
+    q.type==='카드→키워드' &&
+    Array.isArray(q.choices)
+  );
+  const correctChoice=keywordQuestion?.choices.find(c => c.correct);
+  return correctChoice?.text || '';
+}
+
+function getCardDifference(cardA, cardB){
+  const nameA=getCardName(cardA);
+  const nameB=getCardName(cardB);
+  const keywordsA=getCardKeywords(cardA);
+  const keywordsB=getCardKeywords(cardB);
+
+  if(keywordsA && keywordsB){
+    return `<b>${nameA}</b>는 ${escapeHtml(keywordsA)}에 가깝고,<br><b>${nameB}</b>는 ${escapeHtml(keywordsB)}에 가깝습니다.`;
+  }
+  return `${nameA}와 ${nameB}의 핵심 의미를 다시 비교해 보세요.`;
+}
+
+function escapeHtml(value){
+  return String(value)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
+}
+
 function refreshStats(){
   const level = getLevelInfo();
   const acc = progress.totalAnswered
@@ -182,7 +266,7 @@ function render(){
   q.choices.forEach(c=>{
     const b=document.createElement('button');
     b.className='choice';
-    b.innerHTML=`<span class="idx">${c.no}</span><span>${c.text}</span>`;
+    b.innerHTML=`<span class="idx">${c.no}</span><span>${escapeHtml(c.text)}</span>`;
     b.onclick=()=>select(c,b,q);
     wrap.appendChild(b);
   });
@@ -219,6 +303,7 @@ function select(c,btn,q){
     fb.className='feedback bad';
     title.textContent='조금 헷갈렸어요 · 0 XP';
     progress.wrongQueue[q.id] = (progress.wrongQueue[q.id] || 0) + 1;
+    recordConfusion(q,c);
   }
 
   saveProgress();
@@ -238,6 +323,41 @@ document.getElementById('nextBtn').onclick=()=>{
     window.scrollTo({top:0,behavior:'smooth'});
   } else showSummary();
 };
+
+function renderConfusionSummary(){
+  const section=document.getElementById('confusionSection');
+  const list=document.getElementById('confusionList');
+  const reviewBtn=document.getElementById('confusionReviewBtn');
+  const entries=Object.entries(sessionConfusions)
+    .sort((a,b) => {
+      const totalDiff=(progress.confusionPairs[b[0]]||0)-(progress.confusionPairs[a[0]]||0);
+      return totalDiff || b[1].count-a[1].count;
+    });
+
+  if(!entries.length){
+    section.style.display='none';
+    reviewBtn.style.display='none';
+    list.innerHTML='';
+    return;
+  }
+
+  section.style.display='block';
+  reviewBtn.style.display='block';
+  list.innerHTML=entries.map(([key,info])=>{
+    const [cardA,cardB]=key.split('|');
+    const total=progress.confusionPairs[key]||info.count;
+    const sessionText=info.count>1 ? `이번 학습 ${info.count}회 · ` : '';
+    return `
+      <div class="confusion-card">
+        <div class="confusion-top">
+          <div class="confusion-pair">${escapeHtml(getCardName(cardA))} <span>↔</span> ${escapeHtml(getCardName(cardB))}</div>
+          <div class="confusion-count">${sessionText}누적 ${total}회</div>
+        </div>
+        <div class="confusion-difference">${getCardDifference(cardA,cardB)}</div>
+      </div>
+    `;
+  }).join('');
+}
 
 function showSummary(){
   document.getElementById('quizView').style.display='none';
@@ -261,18 +381,37 @@ function showSummary(){
 
   document.getElementById('scoreRing').style.background=
     `conic-gradient(var(--primary) 0 ${pct}%,#E8E2F5 ${pct}% 100%)`;
+
+  renderConfusionSummary();
 }
 
-function restart(){
+function beginSession(preferredCardIds=[],label='오늘의 학습 · 문제은행 260'){
   idx=0;
   correctCount=0;
-  session=sampleQuestions();
+  sessionConfusions={};
+  session=sampleQuestions(preferredCardIds);
+  document.getElementById('lessonLabel').textContent=label;
   document.getElementById('summary').style.display='none';
   document.getElementById('quizView').style.display='block';
   document.querySelector('.footer-action').style.display='block';
   refreshStats();
   render();
+  window.scrollTo({top:0,behavior:'smooth'});
 }
+
+function startConfusionReview(){
+  const preferredCardIds=[...new Set(
+    Object.keys(sessionConfusions).flatMap(key => key.split('|'))
+  )];
+  if(!preferredCardIds.length) return;
+  beginSession(preferredCardIds,'헷갈린 카드 복습 · 10문제');
+}
+
+function restart(){
+  beginSession();
+}
+
+document.getElementById('confusionReviewBtn').onclick=startConfusionReview;
 
 refreshStats();
 session=sampleQuestions();
