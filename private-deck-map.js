@@ -12,5 +12,6 @@
     return defaultUrl(cardId);
   }
   window.TAROTSTEP_PRIVATE_DECK_MAP=map;
+  window.TAROTSTEP_DEFAULT_CARD_IMAGE=defaultUrl;
   window.TAROTSTEP_CARD_IMAGE=resolve;
 })();
