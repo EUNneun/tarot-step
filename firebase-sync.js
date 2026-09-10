@@ -6,11 +6,11 @@ const STORAGE_KEY='tarotstep_progress_v2';
 const AUTH_SYNC_KEY='tarotstep_auth_synced_uid';
 const OWNER_KEY='tarotstep_progress_owner_uid';
 const config=window.TAROT_FIREBASE_CONFIG;
-const loginGate=document.getElementById('loginGate');
 const gateButton=document.getElementById('loginGateButton');
 
 if(!config){
   document.body.classList.remove('auth-checking');
+  document.body.classList.add('auth-signed-out');
   console.info('[TarotStep] Firebase config not set. Cloud sync is disabled.');
 } else {
   const app=initializeApp(config);
@@ -95,17 +95,39 @@ if(!config){
     return `${messages[code] || err?.message || 'Google 로그인에 실패했습니다.'}\n\n오류 코드: ${code}`;
   }
 
+  function setChecking(message='로그인 확인 중...'){
+    document.body.classList.remove('auth-signed-in','auth-signed-out');
+    document.body.classList.add('auth-checking');
+    if(gateButton){ gateButton.disabled=true; gateButton.textContent=message; }
+  }
+
+  function setSignedOut(){
+    document.body.classList.remove('auth-checking','auth-signed-in');
+    document.body.classList.add('auth-signed-out');
+    if(gateButton){ gateButton.disabled=false; gateButton.textContent='Google 계정으로 시작하기'; }
+  }
+
+  function setSignedIn(){
+    document.body.classList.remove('auth-checking','auth-signed-out');
+    document.body.classList.add('auth-signed-in');
+  }
+
   async function login(){
     if(gateButton) gateButton.disabled=true;
     try { await signInWithPopup(auth,provider); }
-    catch(err){ console.error('[TarotStep] Google login failed',err); alert(authErrorMessage(err)); throw err; }
-    finally { if(gateButton) gateButton.disabled=false; }
+    catch(err){
+      console.error('[TarotStep] Google login failed',err);
+      setSignedOut();
+      alert(authErrorMessage(err));
+      throw err;
+    }
   }
 
   let activeUser=null;
   let saveTimer=null;
 
   async function logout(){
+    setChecking('로그아웃 중...');
     if(activeUser){
       clearTimeout(saveTimer);
       try { await pushProgress(activeUser); } catch(err){ console.error('[TarotStep] final cloud save failed',err); }
@@ -114,7 +136,7 @@ if(!config){
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(AUTH_SYNC_KEY);
     await signOut(auth);
-    location.reload();
+    setSignedOut();
   }
 
   gateButton?.addEventListener('click',()=>login().catch(()=>{}));
@@ -124,15 +146,13 @@ if(!config){
     activeUser=user;
     window.TAROT_AUTH_USER=user?{uid:user.uid,displayName:user.displayName||'',email:user.email||'',photoURL:user.photoURL||''}:null;
     window.dispatchEvent(new CustomEvent('tarotstep:auth-changed',{detail:window.TAROT_AUTH_USER}));
-    document.body.classList.remove('auth-checking','auth-signed-in','auth-signed-out');
 
     if(!user){
-      if(gateButton){ gateButton.disabled=false; gateButton.textContent='Google 계정으로 시작하기'; }
-      document.body.classList.add('auth-signed-out');
+      setSignedOut();
       return;
     }
 
-    document.body.classList.add('auth-signed-in');
+    setChecking('학습 기록 불러오는 중...');
     const owner=localStorage.getItem(OWNER_KEY);
     if(owner && owner!==user.uid) localStorage.removeItem(STORAGE_KEY);
 
@@ -142,14 +162,13 @@ if(!config){
       if(sessionStorage.getItem(AUTH_SYNC_KEY)!==user.uid){
         sessionStorage.setItem(AUTH_SYNC_KEY,user.uid);
         location.reload();
+        return;
       }
+      setSignedIn();
     }catch(err){
       console.error('[TarotStep] cloud merge failed',err);
       localStorage.setItem(OWNER_KEY,user.uid);
-      if(sessionStorage.getItem(AUTH_SYNC_KEY)!==user.uid){
-        sessionStorage.setItem(AUTH_SYNC_KEY,user.uid);
-        location.reload();
-      }
+      setSignedIn();
     }
   });
 
