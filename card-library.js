@@ -17,6 +17,7 @@
   }
   function imageUrl(id){return typeof window.TAROTSTEP_CARD_IMAGE==='function'?window.TAROTSTEP_CARD_IMAGE(id):'';}
   function fallbackUrl(id){return typeof window.TAROTSTEP_DEFAULT_CARD_IMAGE==='function'?window.TAROTSTEP_DEFAULT_CARD_IMAGE(id):'';}
+  function related(id){return questions.filter(q=>q.card_id===id || (Array.isArray(q.card_ids)&&q.card_ids.includes(id)));}
   function keywordText(id){
     const q=questions.find(q=>q.card_id===id && q.type==='카드→키워드' && Array.isArray(q.choices));
     return q?.choices?.find(c=>c.correct)?.text||'';
@@ -26,12 +27,33 @@
     if(Array.isArray(note?.keywords)&&note.keywords.length) return note.keywords;
     return keywordText(id).split(/[·,\/]/).map(v=>v.trim()).filter(Boolean).slice(0,6);
   }
-  function compactFallback(id){
-    const q=questions.find(q=>q.card_id===id && q.explanation);
-    const text=String(q?.explanation||'').replace(/\s+/g,' ').trim();
-    if(!text) return '';
-    const first=text.split(/(?<=[.!?。])\s+/)[0]||text;
-    return first.length>110?`${first.slice(0,107)}…`:first;
+  function cleanExplanation(text){
+    return String(text||'')
+      .replace(/^(핵심 의미|정답 근거|구분 포인트|해석 주의|핵심 해설)\s*[:：]?\s*/i,'')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+  function baseExplanation(id){
+    const candidates=related(id)
+      .filter(q=>q.explanation)
+      .sort((a,b)=>{
+        const score=q=>q.type==='카드→키워드'?0:(q.difficulty==='초급'?1:2);
+        return score(a)-score(b);
+      })
+      .map(q=>cleanExplanation(q.explanation))
+      .filter(Boolean);
+
+    const picked=[];
+    for(const text of candidates){
+      if(picked.some(prev=>prev===text || prev.includes(text) || text.includes(prev))) continue;
+      picked.push(text);
+      if(picked.length>=2) break;
+    }
+
+    let result=picked.join('\n\n');
+    if(!result && notes[id]?.imageMeaning) result=notes[id].imageMeaning;
+    if(result.length>650) result=`${result.slice(0,647).trim()}…`;
+    return result || '이 카드의 핵심 의미와 상황별 해석은 학습 데이터가 쌓이는 대로 보완됩니다.';
   }
   function navIcon(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/></svg>';}
 
@@ -54,14 +76,14 @@
   }
   function renderGrid(){
     const view=document.getElementById('cardLibraryView'); if(!view) return;
-    view.innerHTML=`<div class="subpage-title"><div><span>TAROT CARDS</span><h2>카드</h2></div><div class="level-chip">78장</div></div><p class="card-library-intro">카드를 눌러 핵심 의미를 빠르게 확인해 보세요.</p><div class="card-library-grid">${ids.map(id=>{const url=imageUrl(id),fb=fallbackUrl(id);return `<button type="button" class="card-library-item" data-card-id="${id}">${url?`<img src="${url}" alt="${esc(cardName(id))}" loading="lazy"${fb?` onerror="this.onerror=null;this.src='${fb}'"`:''}>`:''}<span>${esc(cardName(id))}</span></button>`;}).join('')}</div>`;
+    view.innerHTML=`<div class="subpage-title"><div><span>TAROT CARDS</span><h2>카드</h2></div><div class="level-chip">78장</div></div><p class="card-library-intro">카드를 눌러 기본 해석과 핵심 포인트를 함께 확인해 보세요.</p><div class="card-library-grid">${ids.map(id=>{const url=imageUrl(id),fb=fallbackUrl(id);return `<button type="button" class="card-library-item" data-card-id="${id}">${url?`<img src="${url}" alt="${esc(cardName(id))}" loading="lazy"${fb?` onerror="this.onerror=null;this.src='${fb}'"`:''}>`:''}<span>${esc(cardName(id))}</span></button>`;}).join('')}</div>`;
     view.querySelectorAll('[data-card-id]').forEach(btn=>btn.addEventListener('click',()=>renderDetail(btn.dataset.cardId)));
   }
   function renderDetail(id){
     const view=document.getElementById('cardLibraryView'); if(!view) return;
-    const name=cardName(id),url=imageUrl(id),fb=fallbackUrl(id),note=notes[id],keywords=keywordList(id),fallback=compactFallback(id);
+    const name=cardName(id),url=imageUrl(id),fb=fallbackUrl(id),note=notes[id],keywords=keywordList(id),base=baseExplanation(id);
     const chips=keywords.length?`<div class="card-keywords">${keywords.map(k=>`<span>${esc(k)}</span>`).join('')}</div>`:'';
-    const workbookSections=note?`
+    const detailSections=note?`
       ${note.symbols?.length?`<section class="card-note-block"><h3>이미지 포인트</h3><p>${esc(note.symbols.join(' · '))}</p></section>`:''}
       ${note.imageMeaning?`<section class="card-note-block"><h3>이미지 해석</h3><p>${esc(note.imageMeaning)}</p></section>`:''}
       <section class="card-reading-grid">
@@ -69,9 +91,8 @@
         ${note.work?`<div><b>일·커리어</b><p>${esc(note.work)}</p></div>`:''}
         ${note.mind?`<div><b>감정·심리</b><p>${esc(note.mind)}</p></div>`:''}
       </section>
-      ${note.line?`<blockquote class="card-one-line">“${esc(note.line)}”</blockquote>`:''}`:
-      `<section class="card-note-block"><h3>핵심 해설</h3><p>${esc(fallback||'이 카드는 핵심 키워드를 중심으로 먼저 익혀보세요.')}</p></section>`;
-    view.innerHTML=`<button type="button" class="card-library-back" id="cardLibraryBack">‹ 카드 목록</button><article class="card-detail"><div class="card-detail-visual">${url?`<img src="${url}" alt="${esc(name)}"${fb?` onerror="this.onerror=null;this.src='${fb}'"`:''}>`:''}</div><div class="card-detail-head"><span>${esc(id)}</span><h2>${esc(name)}</h2>${chips}</div>${workbookSections}</article>`;
+      ${note.line?`<blockquote class="card-one-line">“${esc(note.line)}”</blockquote>`:''}`:'';
+    view.innerHTML=`<button type="button" class="card-library-back" id="cardLibraryBack">‹ 카드 목록</button><article class="card-detail"><div class="card-detail-visual">${url?`<img src="${url}" alt="${esc(name)}"${fb?` onerror="this.onerror=null;this.src='${fb}'"`:''}>`:''}</div><div class="card-detail-head"><span>${esc(id)}</span><h2>${esc(name)}</h2></div><section class="card-base-block"><h3>기본 해석</h3>${base.split('\n\n').map(p=>`<p>${esc(p)}</p>`).join('')}</section>${chips?`<section class="card-keyword-section"><h3>핵심 키워드</h3>${chips}</section>`:''}${detailSections}</article>`;
     document.getElementById('cardLibraryBack')?.addEventListener('click',renderGrid);
     window.scrollTo({top:0,behavior:'smooth'});
   }
