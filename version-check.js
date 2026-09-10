@@ -1,5 +1,5 @@
 (()=>{
-  const CURRENT_VERSION='2026.09.11.1';
+  const CURRENT_VERSION='2026.09.11.2';
   const VERSION_URL='version.json';
   const RELOAD_GUARD_KEY='tarotstep_version_reload_target';
   const CHECK_THROTTLE_MS=1500;
@@ -38,7 +38,6 @@
       url.searchParams.set('__appv',serverVersion);
       location.replace(url.toString());
     }catch(err){
-      // Offline/network errors: keep the currently loaded app as-is.
       console.info('[TarotStep] version check skipped',err?.message||err);
     }finally{
       checking=false;
@@ -47,13 +46,9 @@
 
   window.TAROTSTEP_APP_VERSION=CURRENT_VERSION;
   window.TAROTSTEP_CHECK_VERSION=checkVersion;
-
   window.addEventListener('pageshow',checkVersion);
   window.addEventListener('focus',checkVersion);
   window.addEventListener('online',checkVersion);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible') checkVersion();
-  });
-
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') checkVersion();});
   checkVersion();
 })();
