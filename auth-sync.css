@@ -1,0 +1,1 @@
+.auth-area{display:flex;align-items:center}.auth-button{border:1px solid var(--line);background:#fff;color:#5F6575;border-radius:999px;padding:6px 9px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}.auth-button:disabled{opacity:.55;cursor:default}@media(max-width:390px){.auth-button{max-width:110px;overflow:hidden;text-overflow:ellipsis}.stat{gap:6px}}
