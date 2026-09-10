@@ -1,7 +1,7 @@
 (()=>{
   if(typeof render!=='function') return;
 
-  const imageBase='https://petaloverflow.github.io/tarot-api/cards/';
+  const imageBase='https://raw.githubusercontent.com/sixseeds/tarot-api/main/cards/';
   const suitCode={W:'wa',C:'cu',S:'sw',P:'pe'};
 
   function imageUrl(cardId){
