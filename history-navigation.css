@@ -1,0 +1,28 @@
+.footer-action{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:8px;
+}
+.previous{
+  display:none;
+  min-width:86px;
+  min-height:48px;
+  border:1px solid #D6DBE8;
+  border-radius:12px;
+  padding:12px 14px;
+  background:#fff;
+  color:#62697A;
+  font-size:15px;
+  font-weight:600;
+  cursor:pointer;
+}
+.footer-action .next{
+  width:100%;
+}
+.previous:focus-visible{
+  outline:3px solid var(--primary2);
+  outline-offset:2px;
+}
+@media (max-width:360px){
+  .previous{min-width:78px;padding-left:10px;padding-right:10px}
+}
