@@ -1,16 +1,13 @@
 (()=>{
-  function total(){return window.TAROT_DATA?.questions?.length||260;}
-  function fixLabel(label){return String(label||'').replace(/문제은행\s*\d+/g,`문제은행 ${total()}`);}
+  function cleanLabel(label){return String(label||'').replace(/\s*·\s*문제은행\s*\d+/g,'').trim();}
   const lesson=document.getElementById('lessonLabel');
-  if(lesson) lesson.textContent=fixLabel(lesson.textContent);
+  if(lesson) lesson.textContent=cleanLabel(lesson.textContent)||'오늘의 학습';
 
   if(typeof window.beginSession==='function'){
     const base=window.beginSession;
     window.beginSession=function(preferredCardIds=[],label){
-      const nextLabel=label?fixLabel(label):`오늘의 학습 · 문제은행 ${total()}`;
+      const nextLabel=cleanLabel(label||'오늘의 학습')||'오늘의 학습';
       return base(preferredCardIds,nextLabel);
     };
   }
-
-  window.TAROTSTEP_QUESTION_COUNT=total();
 })();
