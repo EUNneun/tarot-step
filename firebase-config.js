@@ -1,5 +1,5 @@
 window.TAROT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDiVx06U1t2xVkFZ0hDEZdnbM6TSg9ce1U",
+  apiKey: "AIzaSyDiVxO601t2xVkFZ0hDEZdnbM6TSg9ce1U",
   authDomain: "tarotstep-ca085.firebaseapp.com",
   projectId: "tarotstep-ca085",
   storageBucket: "tarotstep-ca085.firebasestorage.app",
