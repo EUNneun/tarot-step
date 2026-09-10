@@ -3,6 +3,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const STORAGE_KEY='tarotstep_progress_v2';
+const AUTH_SYNC_KEY='tarotstep_auth_synced_uid';
 const config=window.TAROT_FIREBASE_CONFIG;
 
 if(!config){
@@ -103,7 +104,11 @@ if(!config){
     btn.className='auth-button';
     if(user){
       btn.textContent=user.displayName ? `${user.displayName} · 로그아웃` : '로그아웃';
-      btn.onclick=()=>signOut(auth);
+      btn.onclick=async()=>{
+        sessionStorage.removeItem(AUTH_SYNC_KEY);
+        await signOut(auth);
+        location.reload();
+      };
     }else{
       btn.textContent='Google 로그인';
       btn.onclick=async()=>{
@@ -124,12 +129,18 @@ if(!config){
     renderAuth(user);
     if(!user) return;
     try{
-      const changed=await mergeCloudIntoLocal(user);
-      if(changed && !sessionStorage.getItem('tarotstep_cloud_merged')){
-        sessionStorage.setItem('tarotstep_cloud_merged','1');
+      await mergeCloudIntoLocal(user);
+      if(sessionStorage.getItem(AUTH_SYNC_KEY)!==user.uid){
+        sessionStorage.setItem(AUTH_SYNC_KEY,user.uid);
         location.reload();
       }
-    }catch(err){ console.error('[TarotStep] cloud merge failed',err); }
+    }catch(err){
+      console.error('[TarotStep] cloud merge failed',err);
+      if(sessionStorage.getItem(AUTH_SYNC_KEY)!==user.uid){
+        sessionStorage.setItem(AUTH_SYNC_KEY,user.uid);
+        location.reload();
+      }
+    }
   });
 
   window.addEventListener('tarotstep:progress-saved',()=>{
