@@ -1,12 +1,8 @@
 (()=>{
   if(typeof render!=='function') return;
 
-  const imageBase='https://raw.githubusercontent.com/sixseeds/tarot-api/main/cards/';
-  const suitCode={W:'wa',C:'cu',S:'sw',P:'pe'};
-
   function imageUrl(cardId){
-    if(/^M\d{2}$/.test(cardId||'')) return `${imageBase}ar${cardId.slice(1)}.jpg`;
-    if(/^[WCSP]\d{2}$/.test(cardId||'')) return `${imageBase}${suitCode[cardId[0]]}${cardId.slice(1)}.jpg`;
+    if(typeof window.TAROTSTEP_CARD_IMAGE==='function') return window.TAROTSTEP_CARD_IMAGE(cardId);
     return '';
   }
 
@@ -46,7 +42,8 @@
     spread.innerHTML=parsed.roles.slice(0,3).map((item,i)=>{
       const id=cardIds[i]||'';
       const url=imageUrl(id);
-      return `<div class="consultation-card">${url?`<img src="${url}" alt="${item.name}" loading="lazy">`:''}<span class="consultation-role">${item.role}</span><strong class="consultation-name">${item.name}</strong></div>`;
+      const fallback=typeof window.TAROTSTEP_DEFAULT_CARD_IMAGE==='function' ? window.TAROTSTEP_DEFAULT_CARD_IMAGE(id) : '';
+      return `<div class="consultation-card">${url?`<img src="${url}" alt="${item.name}" loading="lazy"${fallback?` onerror="this.onerror=null;this.src='${fallback}'"`:''}>`:''}<span class="consultation-role">${item.role}</span><strong class="consultation-name">${item.name}</strong></div>`;
     }).join('');
     questionEl.insertAdjacentElement('afterend',spread);
 
@@ -62,5 +59,6 @@
     enhanceConsultation();
   };
 
+  window.addEventListener('tarotstep:deck-changed',enhanceConsultation);
   enhanceConsultation();
 })();
