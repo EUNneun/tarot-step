@@ -84,6 +84,18 @@ if(!config){
     return before!==after;
   }
 
+  function authErrorMessage(err){
+    const code=err?.code || 'unknown';
+    const messages={
+      'auth/unauthorized-domain':'현재 접속한 도메인이 Firebase 승인 도메인에 등록되지 않았습니다.',
+      'auth/operation-not-allowed':'Firebase Authentication에서 Google 로그인이 아직 활성화되지 않았습니다.',
+      'auth/popup-blocked':'브라우저에서 로그인 팝업이 차단되었습니다.',
+      'auth/popup-closed-by-user':'Google 로그인 창이 완료 전에 닫혔습니다.',
+      'auth/cancelled-popup-request':'다른 로그인 요청이 진행 중입니다.'
+    };
+    return `${messages[code] || err?.message || 'Google 로그인에 실패했습니다.'}\n\n오류 코드: ${code}`;
+  }
+
   function renderAuth(user){
     authArea.innerHTML='';
     const btn=document.createElement('button');
@@ -97,7 +109,7 @@ if(!config){
       btn.onclick=async()=>{
         btn.disabled=true;
         try { await signInWithPopup(auth,provider); }
-        catch(err){ console.error(err); alert('Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.'); }
+        catch(err){ console.error('[TarotStep] Google login failed',err); alert(authErrorMessage(err)); }
         finally { btn.disabled=false; }
       };
     }
