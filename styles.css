@@ -354,9 +354,9 @@ body{padding:0}
 /* The shared decorative card is not needed to answer a question. */
 .card-visual{display:none !important}
 .qnum{font-size:13px;margin-bottom:5px}
-.question{font-size:20px;line-height:1.4;letter-spacing:-.4px;margin-bottom:14px}
-.choices{gap:8px}
-.choice{min-height:44px;border-radius:12px;padding:10px 12px;gap:9px;font-size:15px;line-height:1.4}
+.question{font-size:18px;line-height:1.4;letter-spacing:-.4px;margin-bottom:10px;white-space:pre-line}
+.choices{gap:6px}
+.choice{min-height:44px;border-radius:12px;padding:8px 10px;gap:8px;font-size:15px;line-height:1.4}
 .choice .idx{flex-basis:24px;height:24px;border-radius:7px;margin-top:0}
 .feedback{margin-top:12px;border-radius:12px;padding:10px 12px;line-height:1.45}
 .feedback-title{font-size:15px;margin-bottom:4px}
