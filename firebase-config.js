@@ -1,3 +1,9 @@
-// Firebase Console > Project settings > Your apps > Web app configuration
-// 아래 객체를 실제 firebaseConfig 값으로 교체하면 됩니다.
-window.TAROT_FIREBASE_CONFIG = null;
+window.TAROT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDiVx06U1t2xVkFZ0hDEZdnbM6TSg9ce1U",
+  authDomain: "tarotstep-ca085.firebaseapp.com",
+  projectId: "tarotstep-ca085",
+  storageBucket: "tarotstep-ca085.firebasestorage.app",
+  messagingSenderId: "334384256709",
+  appId: "1:334384256709:web:4b3e39c729bc3f681e82ac",
+  measurementId: "G-1EVKFJGYQ4"
+};
