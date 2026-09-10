@@ -16,10 +16,6 @@ if(!config){
   provider.setCustomParameters({prompt:'select_account'});
   await setPersistence(auth,browserLocalPersistence);
 
-  const authArea=document.createElement('div');
-  authArea.className='auth-area';
-  document.querySelector('.topbar .stat')?.prepend(authArea);
-
   function readLocal(){
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}') || {}; }
     catch { return {}; }
@@ -41,9 +37,7 @@ if(!config){
 
   function mergeProgress(local={},remote={}){
     const cardStats={...remote.cardStats};
-    for(const [id,stat] of Object.entries(local.cardStats||{})){
-      cardStats[id]=mergeStat(stat,cardStats[id]);
-    }
+    for(const [id,stat] of Object.entries(local.cardStats||{})) cardStats[id]=mergeStat(stat,cardStats[id]);
     const localRecent=Array.isArray(local.recentQuestionIds)?local.recentQuestionIds:[];
     const remoteRecent=Array.isArray(remote.recentQuestionIds)?remote.recentQuestionIds:[];
     return {
@@ -97,29 +91,18 @@ if(!config){
     return `${messages[code] || err?.message || 'Google 로그인에 실패했습니다.'}\n\n오류 코드: ${code}`;
   }
 
-  function renderAuth(user){
-    authArea.innerHTML='';
-    const btn=document.createElement('button');
-    btn.type='button';
-    btn.className='auth-button';
-    if(user){
-      btn.textContent=user.displayName ? `${user.displayName} · 로그아웃` : '로그아웃';
-      btn.onclick=async()=>{
-        sessionStorage.removeItem(AUTH_SYNC_KEY);
-        await signOut(auth);
-        location.reload();
-      };
-    }else{
-      btn.textContent='Google 로그인';
-      btn.onclick=async()=>{
-        btn.disabled=true;
-        try { await signInWithPopup(auth,provider); }
-        catch(err){ console.error('[TarotStep] Google login failed',err); alert(authErrorMessage(err)); }
-        finally { btn.disabled=false; }
-      };
-    }
-    authArea.appendChild(btn);
+  async function login(){
+    try { await signInWithPopup(auth,provider); }
+    catch(err){ console.error('[TarotStep] Google login failed',err); alert(authErrorMessage(err)); throw err; }
   }
+
+  async function logout(){
+    sessionStorage.removeItem(AUTH_SYNC_KEY);
+    await signOut(auth);
+    location.reload();
+  }
+
+  window.TAROT_AUTH_ACTIONS={login,logout};
 
   let activeUser=null;
   let saveTimer=null;
@@ -128,7 +111,6 @@ if(!config){
     activeUser=user;
     window.TAROT_AUTH_USER=user?{uid:user.uid,displayName:user.displayName||'',email:user.email||'',photoURL:user.photoURL||''}:null;
     window.dispatchEvent(new CustomEvent('tarotstep:auth-changed',{detail:window.TAROT_AUTH_USER}));
-    renderAuth(user);
     if(!user) return;
     try{
       await mergeCloudIntoLocal(user);
