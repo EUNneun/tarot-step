@@ -6,6 +6,8 @@ const STORAGE_KEY='tarotstep_progress_v2';
 const AUTH_SYNC_KEY='tarotstep_auth_synced_uid';
 const OWNER_KEY='tarotstep_progress_owner_uid';
 const config=window.TAROT_FIREBASE_CONFIG;
+const loginGate=document.getElementById('loginGate');
+const gateButton=document.getElementById('loginGateButton');
 
 if(!config){
   document.body.classList.remove('auth-checking');
@@ -17,19 +19,6 @@ if(!config){
   const provider=new GoogleAuthProvider();
   provider.setCustomParameters({prompt:'select_account'});
   await setPersistence(auth,browserLocalPersistence);
-
-  const loginGate=document.createElement('section');
-  loginGate.className='login-gate';
-  loginGate.innerHTML=`
-    <div class="login-gate-card">
-      <div class="login-gate-mark">🔮</div>
-      <div class="login-gate-brand">Tarot<span>Step</span></div>
-      <h1>타로를 문제로 익혀보세요</h1>
-      <p>Google 계정으로 로그인하면 학습 기록이 안전하게 저장되고 다른 기기에서도 이어서 학습할 수 있습니다.</p>
-      <button type="button" class="login-gate-button">Google 계정으로 시작하기</button>
-    </div>`;
-  document.body.appendChild(loginGate);
-  const gateButton=loginGate.querySelector('.login-gate-button');
 
   function readLocal(){
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}') || {}; }
@@ -107,10 +96,10 @@ if(!config){
   }
 
   async function login(){
-    gateButton.disabled=true;
+    if(gateButton) gateButton.disabled=true;
     try { await signInWithPopup(auth,provider); }
     catch(err){ console.error('[TarotStep] Google login failed',err); alert(authErrorMessage(err)); throw err; }
-    finally { gateButton.disabled=false; }
+    finally { if(gateButton) gateButton.disabled=false; }
   }
 
   let activeUser=null;
@@ -128,7 +117,7 @@ if(!config){
     location.reload();
   }
 
-  gateButton.addEventListener('click',()=>login().catch(()=>{}));
+  gateButton?.addEventListener('click',()=>login().catch(()=>{}));
   window.TAROT_AUTH_ACTIONS={login,logout};
 
   onAuthStateChanged(auth,async user=>{
@@ -138,6 +127,7 @@ if(!config){
     document.body.classList.remove('auth-checking','auth-signed-in','auth-signed-out');
 
     if(!user){
+      if(gateButton){ gateButton.disabled=false; gateButton.textContent='Google 계정으로 시작하기'; }
       document.body.classList.add('auth-signed-out');
       return;
     }
