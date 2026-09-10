@@ -98,10 +98,10 @@
       <section class="report-section"><div class="section-head"><h3>자주 헷갈린 카드 TOP3</h3><span>누적 기준</span></div><div class="report-list">${confusions.length?confusions.map((c,i)=>`<div class="report-row"><div><div class="row-title">${i+1}. ${escapeHtml(cardName(c.cards[0]))} ↔ ${escapeHtml(cardName(c.cards[1]))}</div><div class="row-meta">두 카드의 차이를 집중해서 복습해 보세요.</div></div><strong>${c.count}회</strong></div>`).join(''):'<div class="empty-state">아직 누적된 혼동 카드가 없습니다.</div>'}</div></section>`;
   }
   async function shareApp(btn){
-    const payload={title:'TarotStep',text:'타로 카드 78장을 문제로 익히는 TarotStep',url:SHARE_URL};
+    const payload={text:'TarotStep에서 타로카드 78장을 문제로 익혀보세요.',url:SHARE_URL};
     try{
       if(navigator.share){await navigator.share(payload);return;}
-      await navigator.clipboard.writeText(SHARE_URL);
+      await navigator.clipboard.writeText(`TarotStep에서 타로카드 78장을 문제로 익혀보세요. ${SHARE_URL}`);
       const old=btn.textContent; btn.textContent='링크를 복사했습니다'; setTimeout(()=>btn.textContent=old,1600);
     }catch(err){if(err?.name!=='AbortError') console.error('[TarotStep] share failed',err);}
   }
