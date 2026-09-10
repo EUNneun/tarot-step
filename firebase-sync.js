@@ -39,6 +39,20 @@ if(!config){
     return out;
   }
 
+  function mergeFeedback(a={},b={}){
+    const out={...a};
+    for(const [id,item] of Object.entries(b||{})){
+      const prev=out[id]||{};
+      out[id]={
+        ...prev,
+        ...item,
+        count:Math.max(num(prev.count)||0,num(item?.count)||0,1),
+        checkedAt:item?.checkedAt||prev.checkedAt||null
+      };
+    }
+    return out;
+  }
+
   function mergeProgress(local={},remote={}){
     const cardStats={...remote.cardStats};
     for(const [id,stat] of Object.entries(local.cardStats||{})) cardStats[id]=mergeStat(stat,cardStats[id]);
@@ -51,6 +65,7 @@ if(!config){
       wrongQueue:mergeMapMax(remote.wrongQueue,local.wrongQueue),
       cardStats,
       confusionPairs:mergeMapMax(remote.confusionPairs,local.confusionPairs),
+      explanationFeedback:mergeFeedback(remote.explanationFeedback,local.explanationFeedback),
       recentQuestionIds:remoteRecent.length?remoteRecent:localRecent
     };
   }
