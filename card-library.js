@@ -81,6 +81,23 @@
     view.innerHTML=`<div class="subpage-title"><div><span>TAROT CARDS</span><h2>카드</h2></div><div class="level-chip">78장</div></div><p class="card-library-intro">카드를 눌러 기본 해석과 상황별 의미를 함께 확인해 보세요.</p><div class="card-library-grid">${ids.map(id=>{const url=imageUrl(id),fb=fallbackUrl(id);return `<button type="button" class="card-library-item" data-card-id="${id}">${url?`<img src="${url}" alt="${esc(cardName(id))}" loading="lazy"${fb?` onerror="this.onerror=null;this.src='${fb}'"`:''}>`:''}<span>${esc(cardName(id))}</span></button>`;}).join('')}</div>`;
     view.querySelectorAll('[data-card-id]').forEach(btn=>btn.addEventListener('click',()=>renderDetail(btn.dataset.cardId)));
   }
+  function bindSwipe(view,id){
+    let startX=0,startY=0,tracking=false;
+    const threshold=56;
+    view.addEventListener('touchstart',e=>{
+      const t=e.touches?.[0]; if(!t) return;
+      startX=t.clientX; startY=t.clientY; tracking=true;
+    },{passive:true});
+    view.addEventListener('touchend',e=>{
+      if(!tracking) return; tracking=false;
+      const t=e.changedTouches?.[0]; if(!t) return;
+      const dx=t.clientX-startX, dy=t.clientY-startY;
+      if(Math.abs(dx)<threshold || Math.abs(dx)<=Math.abs(dy)*1.25) return;
+      const current=ids.indexOf(id); if(current<0) return;
+      if(dx<0 && current<ids.length-1) renderDetail(ids[current+1]);
+      if(dx>0 && current>0) renderDetail(ids[current-1]);
+    },{passive:true});
+  }
   function renderDetail(id){
     const view=document.getElementById('cardLibraryView'); if(!view) return;
     const name=cardName(id),url=imageUrl(id),fb=fallbackUrl(id),note=notes[id]||{},f=fuego[id]||{},keywords=keywordList(id),base=baseExplanation(id);
@@ -102,6 +119,7 @@
       ${personal?`<blockquote class="card-one-line">${rich(personal)}</blockquote>`:''}
     </article>`;
     document.getElementById('cardLibraryBack')?.addEventListener('click',renderGrid);
+    bindSwipe(view,id);
     window.scrollTo({top:0,behavior:'smooth'});
   }
   function showCards(){setActive();renderGrid();}
