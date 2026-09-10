@@ -1,5 +1,5 @@
 (()=>{
-  const PRIVATE_DECK_EMAIL='limiteun@gamil.com';
+  const PRIVATE_DECK_EMAIL='limiteun@gmail.com';
 
   function apply(user){
     const email=String(user?.email||'').trim().toLowerCase();
