@@ -17,6 +17,7 @@
   cursor:pointer;
 }
 .footer-action .next{
+  grid-column:2;
   width:100%;
 }
 .previous:focus-visible{
