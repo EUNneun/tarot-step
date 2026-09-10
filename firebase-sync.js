@@ -43,11 +43,16 @@ if(!config){
     const out={...a};
     for(const [id,item] of Object.entries(b||{})){
       const prev=out[id]||{};
+      const legacyNeedsMore=Math.max(num(prev.count),num(item?.count));
       out[id]={
         ...prev,
         ...item,
-        count:Math.max(num(prev.count)||0,num(item?.count)||0,1),
-        checkedAt:item?.checkedAt||prev.checkedAt||null
+        count:legacyNeedsMore,
+        needsMoreCount:Math.max(num(prev.needsMoreCount),num(item?.needsMoreCount),legacyNeedsMore),
+        helpfulCount:Math.max(num(prev.helpfulCount),num(item?.helpfulCount)),
+        checkedAt:item?.checkedAt||prev.checkedAt||null,
+        needsMoreAt:item?.needsMoreAt||prev.needsMoreAt||item?.checkedAt||prev.checkedAt||null,
+        helpfulAt:item?.helpfulAt||prev.helpfulAt||null
       };
     }
     return out;
