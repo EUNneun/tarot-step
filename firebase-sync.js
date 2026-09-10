@@ -4,9 +4,11 @@ import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.
 
 const STORAGE_KEY='tarotstep_progress_v2';
 const AUTH_SYNC_KEY='tarotstep_auth_synced_uid';
+const OWNER_KEY='tarotstep_progress_owner_uid';
 const config=window.TAROT_FIREBASE_CONFIG;
 
 if(!config){
+  document.body.classList.remove('auth-checking');
   console.info('[TarotStep] Firebase config not set. Cloud sync is disabled.');
 } else {
   const app=initializeApp(config);
@@ -15,6 +17,19 @@ if(!config){
   const provider=new GoogleAuthProvider();
   provider.setCustomParameters({prompt:'select_account'});
   await setPersistence(auth,browserLocalPersistence);
+
+  const loginGate=document.createElement('section');
+  loginGate.className='login-gate';
+  loginGate.innerHTML=`
+    <div class="login-gate-card">
+      <div class="login-gate-mark">🔮</div>
+      <div class="login-gate-brand">Tarot<span>Step</span></div>
+      <h1>타로를 문제로 익혀보세요</h1>
+      <p>Google 계정으로 로그인하면 학습 기록이 안전하게 저장되고 다른 기기에서도 이어서 학습할 수 있습니다.</p>
+      <button type="button" class="login-gate-button">Google 계정으로 시작하기</button>
+    </div>`;
+  document.body.appendChild(loginGate);
+  const gateButton=loginGate.querySelector('.login-gate-button');
 
   function readLocal(){
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}') || {}; }
@@ -92,34 +107,55 @@ if(!config){
   }
 
   async function login(){
+    gateButton.disabled=true;
     try { await signInWithPopup(auth,provider); }
     catch(err){ console.error('[TarotStep] Google login failed',err); alert(authErrorMessage(err)); throw err; }
+    finally { gateButton.disabled=false; }
   }
 
+  let activeUser=null;
+  let saveTimer=null;
+
   async function logout(){
+    if(activeUser){
+      clearTimeout(saveTimer);
+      try { await pushProgress(activeUser); } catch(err){ console.error('[TarotStep] final cloud save failed',err); }
+      localStorage.setItem(OWNER_KEY,activeUser.uid);
+    }
+    localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(AUTH_SYNC_KEY);
     await signOut(auth);
     location.reload();
   }
 
+  gateButton.addEventListener('click',()=>login().catch(()=>{}));
   window.TAROT_AUTH_ACTIONS={login,logout};
-
-  let activeUser=null;
-  let saveTimer=null;
 
   onAuthStateChanged(auth,async user=>{
     activeUser=user;
     window.TAROT_AUTH_USER=user?{uid:user.uid,displayName:user.displayName||'',email:user.email||'',photoURL:user.photoURL||''}:null;
     window.dispatchEvent(new CustomEvent('tarotstep:auth-changed',{detail:window.TAROT_AUTH_USER}));
-    if(!user) return;
+    document.body.classList.remove('auth-checking','auth-signed-in','auth-signed-out');
+
+    if(!user){
+      document.body.classList.add('auth-signed-out');
+      return;
+    }
+
+    document.body.classList.add('auth-signed-in');
+    const owner=localStorage.getItem(OWNER_KEY);
+    if(owner && owner!==user.uid) localStorage.removeItem(STORAGE_KEY);
+
     try{
       await mergeCloudIntoLocal(user);
+      localStorage.setItem(OWNER_KEY,user.uid);
       if(sessionStorage.getItem(AUTH_SYNC_KEY)!==user.uid){
         sessionStorage.setItem(AUTH_SYNC_KEY,user.uid);
         location.reload();
       }
     }catch(err){
       console.error('[TarotStep] cloud merge failed',err);
+      localStorage.setItem(OWNER_KEY,user.uid);
       if(sessionStorage.getItem(AUTH_SYNC_KEY)!==user.uid){
         sessionStorage.setItem(AUTH_SYNC_KEY,user.uid);
         location.reload();
