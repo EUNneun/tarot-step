@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="bottom-action-fix.css?v=20260910-1">
 <link rel="stylesheet" href="home-dashboard.css?v=20260910-1">
 <link rel="stylesheet" href="consultation-ui.css?v=20260910-2">
-<link rel="stylesheet" href="card-library.css?v=20260911-1">
+<link rel="stylesheet" href="card-library.css?v=20260911-2">
 </head>
 <body class="auth-checking">
 <section class="login-gate" id="loginGate">
@@ -30,69 +30,16 @@
   </div>
 </section>
 <main class="app" data-page="home">
-  <header class="topbar">
-    <div class="brand">Tarot<span>Step</span></div>
-    <div class="stat"><span class="fire" id="solvedCount">누적 0문제</span><span id="xp">0 XP</span></div>
-  </header>
-
-  <div class="level-strip">
-    <span id="currentLevel">Lv.1 입문</span>
-    <span id="masteryStat">숙련 0/78 · 정답률 -</span>
-  </div>
-
-  <section class="progress-wrap">
-    <div class="progress-row"><span id="lessonLabel">오늘의 학습</span><span id="progressText">1 / 10</span></div>
-    <div class="progress"><i id="bar"></i></div>
-  </section>
-
+  <header class="topbar"><div class="brand">Tarot<span>Step</span></div><div class="stat"><span class="fire" id="solvedCount">누적 0문제</span><span id="xp">0 XP</span></div></header>
+  <div class="level-strip"><span id="currentLevel">Lv.1 입문</span><span id="masteryStat">숙련 0/78 · 정답률 -</span></div>
+  <section class="progress-wrap"><div class="progress-row"><span id="lessonLabel">오늘의 학습</span><span id="progressText">1 / 10</span></div><div class="progress"><i id="bar"></i></div></section>
   <section class="content">
-    <div id="quizView">
-      <div class="meta">
-        <span class="pill" id="typePill">카드→키워드</span>
-        <span class="pill soft" id="levelPill">초급</span>
-        <span class="pill review" id="reviewPill" style="display:none">오답 복습</span>
-      </div>
-      <div class="quiz-card">
-        <div class="card-visual" id="cardVisual"></div>
-        <div class="qnum" id="qnum">QUESTION 01</div>
-        <h1 class="question" id="question"></h1>
-        <div class="choices" id="choices"></div>
-        <div class="feedback" id="feedback">
-          <div class="feedback-title" id="feedbackTitle"></div>
-          <div class="explain" id="explain"></div>
-        </div>
-      </div>
-      <div class="hint">한 문제씩 익히면 헷갈리는 카드가 자연스럽게 줄어들어요.</div>
-    </div>
-
-    <div class="summary" id="summary">
-      <div style="font-size:40px">🔮</div>
-      <h2>오늘 학습 완료!</h2>
-      <p style="color:var(--muted);font-weight:750">카드 키워드를 익히고, 헷갈린 문제는 다음 학습에 다시 만나요.</p>
-      <div class="score-ring" id="scoreRing"><b id="scorePct">0%</b></div>
-      <div id="scoreDetail" style="font-weight:400"></div>
-      <div id="levelSummary" class="level-summary"></div>
-
-      <section class="confusion-section" id="confusionSection" style="display:none">
-        <div class="confusion-heading">
-          <div>
-            <h3>이번에 헷갈린 카드</h3>
-            <p>선택한 오답을 기준으로 카드 차이를 비교해 보세요.</p>
-          </div>
-        </div>
-        <div id="confusionList"></div>
-      </section>
-
-      <button class="confusion-review" id="confusionReviewBtn" style="display:none">헷갈린 카드 복습하기</button>
-      <button class="restart" onclick="restart()">새 문제 풀기</button>
-    </div>
+    <div id="quizView"><div class="meta"><span class="pill" id="typePill">카드→키워드</span><span class="pill soft" id="levelPill">초급</span><span class="pill review" id="reviewPill" style="display:none">오답 복습</span></div><div class="quiz-card"><div class="card-visual" id="cardVisual"></div><div class="qnum" id="qnum">QUESTION 01</div><h1 class="question" id="question"></h1><div class="choices" id="choices"></div><div class="feedback" id="feedback"><div class="feedback-title" id="feedbackTitle"></div><div class="explain" id="explain"></div></div></div><div class="hint">한 문제씩 익히면 헷갈리는 카드가 자연스럽게 줄어들어요.</div></div>
+    <div class="summary" id="summary"><div style="font-size:40px">🔮</div><h2>오늘 학습 완료!</h2><p style="color:var(--muted);font-weight:750">카드 키워드를 익히고, 헷갈린 문제는 다음 학습에 다시 만나요.</p><div class="score-ring" id="scoreRing"><b id="scorePct">0%</b></div><div id="scoreDetail" style="font-weight:400"></div><div id="levelSummary" class="level-summary"></div><section class="confusion-section" id="confusionSection" style="display:none"><div class="confusion-heading"><div><h3>이번에 헷갈린 카드</h3><p>선택한 오답을 기준으로 카드 차이를 비교해 보세요.</p></div></div><div id="confusionList"></div></section><button class="confusion-review" id="confusionReviewBtn" style="display:none">헷갈린 카드 복습하기</button><button class="restart" onclick="restart()">새 문제 풀기</button></div>
   </section>
-
-  <div class="footer-action">
-    <button class="next" id="nextBtn">다음 문제</button>
-  </div>
+  <div class="footer-action"><button class="next" id="nextBtn">다음 문제</button></div>
 </main>
-<script src="version-check.js?v=20260911-1"></script>
+<script src="version-check.js?v=20260911-2"></script>
 <script src="data.js?v=20260910-3"></script>
 <script src="beginner-explanations.js?v=20260910-4"></script>
 <script src="intermediate-explanations.js?v=20260910-1"></script>
@@ -107,7 +54,7 @@
 <script src="cloud-sync-bridge.js?v=20260910-1"></script>
 <script src="mypage.js?v=20260910-3"></script>
 <script src="card-notes.js?v=20260911-1"></script>
-<script src="card-library.js?v=20260911-1"></script>
+<script src="card-library.js?v=20260911-2"></script>
 <script src="home-dashboard.js?v=20260910-2"></script>
 <script src="question-count-fix.js?v=20260910-2"></script>
 <script src="firebase-config.js?v=20260910-2"></script>
