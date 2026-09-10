@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#F7F8FC">
 <title>TarotStep - 문제 학습</title>
 <link rel="stylesheet" href="styles.css?v=20260910-3">
+<link rel="stylesheet" href="confusion-analysis.css?v=20260910-5">
 </head>
 <body>
 <main class="app">
@@ -51,7 +52,19 @@
       <div class="score-ring" id="scoreRing"><b id="scorePct">0%</b></div>
       <div id="scoreDetail" style="font-weight:400"></div>
       <div id="levelSummary" class="level-summary"></div>
-      <button class="restart" onclick="restart()">다시 풀기</button>
+
+      <section class="confusion-section" id="confusionSection" style="display:none">
+        <div class="confusion-heading">
+          <div>
+            <h3>이번에 헷갈린 카드</h3>
+            <p>선택한 오답을 기준으로 카드 차이를 비교해 보세요.</p>
+          </div>
+        </div>
+        <div id="confusionList"></div>
+      </section>
+
+      <button class="confusion-review" id="confusionReviewBtn" style="display:none">헷갈린 카드 복습하기</button>
+      <button class="restart" onclick="restart()">새 문제 풀기</button>
     </div>
   </section>
 
@@ -61,6 +74,6 @@
 </main>
 <script src="data.js?v=20260910-3"></script>
 <script src="beginner-explanations.js?v=20260910-4"></script>
-<script src="app.js?v=20260910-3"></script>
+<script src="app.js?v=20260910-5"></script>
 </body>
 </html>
