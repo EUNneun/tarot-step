@@ -56,6 +56,46 @@
     if(result.length>1050) result=`${result.slice(0,1047).trim()}…`;
     return result || '이 카드의 핵심 의미와 상황별 해석은 학습 데이터가 쌓이는 대로 보완됩니다.';
   }
+  function progressData(){
+    try{return JSON.parse(localStorage.getItem('tarotstep_progress_v2')||'{}')||{};}catch{return {};}
+  }
+  function topConfusions(id){
+    const pairs=progressData().confusionPairs||{};
+    return Object.entries(pairs)
+      .map(([key,count])=>({cards:key.split('|'),count:Number(count)||0}))
+      .filter(x=>x.cards.includes(id)&&x.count>0)
+      .sort((a,b)=>b.count-a.count)
+      .slice(0,3)
+      .map(x=>({id:x.cards.find(v=>v!==id),count:x.count}))
+      .filter(x=>x.id);
+  }
+  function naturalSimilar(id){
+    if(!/^[WCSP]\d{2}$/.test(id)) return [];
+    const suit=id[0],rank=id.slice(1),out=[];
+    if(Number(rank)<=10){
+      for(const s of ['W','C','S','P']) if(s!==suit) out.push(`${s}${rank}`);
+      const n=Number(rank);
+      for(const d of [-1,1]) if(n+d>=1&&n+d<=10) out.push(`${suit}${String(n+d).padStart(2,'0')}`);
+    }else{
+      for(const n of [11,12,13,14]) if(String(n)!==rank) out.push(`${suit}${n}`);
+    }
+    return out;
+  }
+  function similarCards(id){
+    const confused=topConfusions(id);
+    const seen=new Set(confused.map(x=>x.id));
+    const result=[...confused];
+    for(const other of naturalSimilar(id)){
+      if(other!==id&&!seen.has(other)){result.push({id:other,count:0});seen.add(other);}
+      if(result.length>=4) break;
+    }
+    return result.slice(0,4);
+  }
+  function memoryLine(id,otherId){
+    const a=keywordList(id).slice(0,2).join('·')||cardName(id);
+    const b=keywordList(otherId).slice(0,2).join('·')||cardName(otherId);
+    return `${cardName(id)}는 ‘${a}’, ${cardName(otherId)}는 ‘${b}’에 초점을 두세요.`;
+  }
   function value(primary,fallback=''){return String(primary||fallback||'').trim();}
   function navIcon(){return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/></svg>';}
 
@@ -106,6 +146,8 @@
     const love=value(f.love,note.love),work=value(f.work,note.work),mind=value(f.mind,note.mind);
     const other=value(f.other,''),personal=value(f.personal,note.line);
     const chips=keywords.length?`<div class="card-keywords">${keywords.map(k=>`<span>${esc(k)}</span>`).join('')}</div>`:'';
+    const similar=similarCards(id);
+    const similarHtml=similar.length?`<section class="card-similar-section"><h3>헷갈리기 쉬운 카드</h3><div class="card-similar-list">${similar.map(x=>`<button type="button" class="card-similar-item" data-similar-card="${x.id}"><b>${esc(cardName(x.id))}</b><span>${esc(keywordList(x.id).slice(0,4).join(' · ')||'핵심 의미 비교')}</span>${x.count?`<em>실제 혼동 ${x.count}회</em>`:''}</button>`).join('')}</div><div class="card-memory-line">${esc(memoryLine(id,similar[0].id))}</div></section>`:'';
 
     view.innerHTML=`<button type="button" class="card-library-back" id="cardLibraryBack">‹ 카드 목록</button><article class="card-detail">
       <div class="card-detail-visual">${url?`<img src="${url}" alt="${esc(name)}"${fb?` onerror="this.onerror=null;this.src='${fb}'"`:''}>`:''}</div>
@@ -117,8 +159,10 @@
       ${(love||work||mind)?`<section class="card-reading-grid">${love?`<div><b>연애</b><p>${rich(love)}</p></div>`:''}${work?`<div><b>일·커리어</b><p>${rich(work)}</p></div>`:''}${mind?`<div><b>감정·심리</b><p>${rich(mind)}</p></div>`:''}</section>`:''}
       ${other?`<section class="card-note-block"><h3>추가 해석</h3><p>${rich(other)}</p></section>`:''}
       ${personal?`<blockquote class="card-one-line">${rich(personal)}</blockquote>`:''}
+      ${similarHtml}
     </article>`;
     document.getElementById('cardLibraryBack')?.addEventListener('click',renderGrid);
+    view.querySelectorAll('[data-similar-card]').forEach(btn=>btn.addEventListener('click',()=>renderDetail(btn.dataset.similarCard)));
     bindSwipe(view,id);
     window.scrollTo({top:0,behavior:'smooth'});
   }
