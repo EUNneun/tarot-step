@@ -5,13 +5,22 @@ import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.
 const STORAGE_KEY='tarotstep_progress_v2';
 const AUTH_SYNC_KEY='tarotstep_auth_synced_uid';
 const OWNER_KEY='tarotstep_progress_owner_uid';
+const GUEST_OWNER='guest';
 const config=window.TAROT_FIREBASE_CONFIG;
 const gateButton=document.getElementById('loginGateButton');
 
-if(!config){
-  document.body.classList.remove('auth-checking');
+function setGuestMode(){
+  document.body.classList.remove('auth-checking','auth-signed-in');
   document.body.classList.add('auth-signed-out');
-  console.info('[TarotStep] Firebase config not set. Cloud sync is disabled.');
+  window.TAROT_AUTH_USER=null;
+}
+
+if(!config){
+  const owner=localStorage.getItem(OWNER_KEY);
+  if(owner && owner!==GUEST_OWNER) localStorage.removeItem(STORAGE_KEY);
+  localStorage.setItem(OWNER_KEY,GUEST_OWNER);
+  setGuestMode();
+  console.info('[TarotStep] Firebase config not set. Guest mode is active.');
 } else {
   const app=initializeApp(config);
   const auth=getAuth(app);
@@ -27,15 +36,27 @@ if(!config){
 
   function num(v){ return Number.isFinite(Number(v)) ? Number(v) : 0; }
 
-  function mergeStat(a={},b={}){
+  function mergeStatSafe(a={},b={}){
     const attempts=Math.max(num(a.attempts),num(b.attempts));
     const correct=Math.min(attempts,Math.max(num(a.correct),num(b.correct)));
     return { attempts, correct, streak:Math.max(num(a.streak),num(b.streak)) };
   }
 
+  function addStat(guest={},remote={}){
+    const attempts=num(remote.attempts)+num(guest.attempts);
+    const correct=Math.min(attempts,num(remote.correct)+num(guest.correct));
+    return { attempts, correct, streak:Math.max(num(remote.streak),num(guest.streak)) };
+  }
+
   function mergeMapMax(a={},b={}){
     const out={...a};
     for(const [k,v] of Object.entries(b||{})) out[k]=Math.max(num(out[k]),num(v));
+    return out;
+  }
+
+  function mergeMapAdd(a={},b={}){
+    const out={...a};
+    for(const [k,v] of Object.entries(b||{})) out[k]=num(out[k])+num(v);
     return out;
   }
 
@@ -58,11 +79,14 @@ if(!config){
     return out;
   }
 
-  function mergeProgress(local={},remote={}){
+  function mergeRecent(localRecent=[],remoteRecent=[]){
+    const combined=[...(Array.isArray(remoteRecent)?remoteRecent:[]),...(Array.isArray(localRecent)?localRecent:[])];
+    return [...new Set(combined)].slice(-120);
+  }
+
+  function mergeProgressSafe(local={},remote={}){
     const cardStats={...remote.cardStats};
-    for(const [id,stat] of Object.entries(local.cardStats||{})) cardStats[id]=mergeStat(stat,cardStats[id]);
-    const localRecent=Array.isArray(local.recentQuestionIds)?local.recentQuestionIds:[];
-    const remoteRecent=Array.isArray(remote.recentQuestionIds)?remote.recentQuestionIds:[];
+    for(const [id,stat] of Object.entries(local.cardStats||{})) cardStats[id]=mergeStatSafe(stat,cardStats[id]);
     return {
       xp:Math.max(num(local.xp),num(remote.xp)),
       totalAnswered:Math.max(num(local.totalAnswered),num(remote.totalAnswered)),
@@ -71,7 +95,22 @@ if(!config){
       cardStats,
       confusionPairs:mergeMapMax(remote.confusionPairs,local.confusionPairs),
       explanationFeedback:mergeFeedback(remote.explanationFeedback,local.explanationFeedback),
-      recentQuestionIds:remoteRecent.length?remoteRecent:localRecent
+      recentQuestionIds:mergeRecent(local.recentQuestionIds,remote.recentQuestionIds)
+    };
+  }
+
+  function mergeGuestProgress(guest={},remote={}){
+    const cardStats={...remote.cardStats};
+    for(const [id,stat] of Object.entries(guest.cardStats||{})) cardStats[id]=addStat(stat,cardStats[id]);
+    return {
+      xp:num(remote.xp)+num(guest.xp),
+      totalAnswered:num(remote.totalAnswered)+num(guest.totalAnswered),
+      totalCorrect:num(remote.totalCorrect)+num(guest.totalCorrect),
+      wrongQueue:mergeMapAdd(remote.wrongQueue,guest.wrongQueue),
+      cardStats,
+      confusionPairs:mergeMapAdd(remote.confusionPairs,guest.confusionPairs),
+      explanationFeedback:mergeFeedback(remote.explanationFeedback,guest.explanationFeedback),
+      recentQuestionIds:mergeRecent(guest.recentQuestionIds,remote.recentQuestionIds)
     };
   }
 
@@ -86,21 +125,25 @@ if(!config){
     },{merge:true});
   }
 
-  async function mergeCloudIntoLocal(user){
+  async function loadOrMergeAccount(user,mode){
     const ref=doc(db,'users',user.uid);
     const snap=await getDoc(ref);
     const local=readLocal();
-    if(!snap.exists()){
-      await pushProgress(user);
-      return false;
-    }
-    const remote=snap.data()?.progress||{};
-    const merged=mergeProgress(local,remote);
-    const before=JSON.stringify(local);
-    const after=JSON.stringify(merged);
-    localStorage.setItem(STORAGE_KEY,after);
-    await setDoc(ref,{progress:merged,email:user.email||null,displayName:user.displayName||null,updatedAt:serverTimestamp()},{merge:true});
-    return before!==after;
+    const remote=snap.exists()?(snap.data()?.progress||{}):{};
+
+    const merged=mode==='guest'
+      ? mergeGuestProgress(local,remote)
+      : mode==='same'
+        ? mergeProgressSafe(local,remote)
+        : mergeProgressSafe({},remote);
+
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(merged));
+    await setDoc(ref,{
+      progress:merged,
+      email:user.email||null,
+      displayName:user.displayName||null,
+      updatedAt:serverTimestamp()
+    },{merge:true});
   }
 
   function authErrorMessage(err){
@@ -122,9 +165,8 @@ if(!config){
   }
 
   function setSignedOut(){
-    document.body.classList.remove('auth-checking','auth-signed-in');
-    document.body.classList.add('auth-signed-out');
-    if(gateButton){ gateButton.disabled=false; gateButton.textContent='Google 계정으로 시작하기'; }
+    setGuestMode();
+    if(gateButton){ gateButton.disabled=false; gateButton.textContent='Google 계정으로 로그인'; }
   }
 
   function setSignedIn(){
@@ -133,7 +175,6 @@ if(!config){
   }
 
   async function login(){
-    if(gateButton) gateButton.disabled=true;
     try { await signInWithPopup(auth,provider); }
     catch(err){
       console.error('[TarotStep] Google login failed',err);
@@ -151,12 +192,13 @@ if(!config){
     if(activeUser){
       clearTimeout(saveTimer);
       try { await pushProgress(activeUser); } catch(err){ console.error('[TarotStep] final cloud save failed',err); }
-      localStorage.setItem(OWNER_KEY,activeUser.uid);
     }
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(OWNER_KEY,GUEST_OWNER);
     sessionStorage.removeItem(AUTH_SYNC_KEY);
     await signOut(auth);
     setSignedOut();
+    location.reload();
   }
 
   gateButton?.addEventListener('click',()=>login().catch(()=>{}));
@@ -168,16 +210,21 @@ if(!config){
     window.dispatchEvent(new CustomEvent('tarotstep:auth-changed',{detail:window.TAROT_AUTH_USER}));
 
     if(!user){
+      const owner=localStorage.getItem(OWNER_KEY);
+      if(owner && owner!==GUEST_OWNER) localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(OWNER_KEY,GUEST_OWNER);
       setSignedOut();
       return;
     }
 
     setChecking('학습 기록 불러오는 중...');
     const owner=localStorage.getItem(OWNER_KEY);
-    if(owner && owner!==user.uid) localStorage.removeItem(STORAGE_KEY);
+    const mode=owner===GUEST_OWNER || !owner ? 'guest' : owner===user.uid ? 'same' : 'other';
+
+    if(mode==='other') localStorage.removeItem(STORAGE_KEY);
 
     try{
-      await mergeCloudIntoLocal(user);
+      await loadOrMergeAccount(user,mode);
       localStorage.setItem(OWNER_KEY,user.uid);
       if(sessionStorage.getItem(AUTH_SYNC_KEY)!==user.uid){
         sessionStorage.setItem(AUTH_SYNC_KEY,user.uid);
