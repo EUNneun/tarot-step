@@ -36,9 +36,23 @@
     dashboard.querySelectorAll('[data-card-id]').forEach(btn=>btn.addEventListener('click',()=>{learningActive=true;beginSession([btn.dataset.cardId], `${cardName(btn.dataset.cardId)} 집중 복습 · 10문제`);}));
   }
 
-  function startCustomSession(pool,label,reviewMode=false){if(!pool.length)return;learningActive=true;beginSession([],label);idx=0;correctCount=0;sessionConfusions={};session=shuffle(pool).slice(0,SESSION_SIZE).map(q=>({...q,isReview:reviewMode}));progress.recentQuestionIds=session.map(q=>q.id);saveProgress();document.getElementById('lessonLabel').textContent=label;document.getElementById('summary').style.display='none';document.getElementById('quizView').style.display='block';document.querySelector('.footer-action').style.display='grid';refreshStats();render();window.scrollTo({top:0,behavior:'smooth'});}
+  function startCustomSession(pool,label,reviewMode=false){if(!pool.length)return;learningActive=true;beginSession([],label);idx=0;correctCount=0;sessionConfusions={};session=shuffle(pool).slice(0,SESSION_SIZE).map(q=>({...q,isReview:reviewMode}));progress.recentQuestionIds=[...(progress.recentQuestionIds||[]),...session.map(q=>q.id)].slice(-80);saveProgress();document.getElementById('lessonLabel').textContent=label;document.getElementById('summary').style.display='none';document.getElementById('quizView').style.display='block';document.querySelector('.footer-action').style.display='grid';refreshStats();render();window.scrollTo({top:0,behavior:'smooth'});}
   function startWrongReview(){const p=readProgress();const ids=new Set(Object.keys(p.wrongQueue||{}).filter(id=>Number(p.wrongQueue[id])>0));const pool=ALL_QUESTIONS.filter(q=>ids.has(q.id));startCustomSession(pool,`오답 복습 · ${Math.min(10,pool.length)}문제`,true);}
-  function startCounseling(){const pool=shuffle(ALL_QUESTIONS.filter(q=>q.type==='오늘의 상담')).slice(0,1);startCustomSession(pool,'오늘의 상담 · 1문제',false);}
+  function startCounseling(){
+    const all=ALL_QUESTIONS.filter(q=>q.type==='오늘의 상담');
+    const recentIds=new Set(progress.recentConsultationIds||[]);
+    const recentThemes=new Set(progress.recentConsultationThemes||[]);
+    let pool=all.filter(q=>!recentIds.has(q.id)&&(!q.consultation_theme||!recentThemes.has(q.consultation_theme)));
+    if(!pool.length) pool=all.filter(q=>!recentIds.has(q.id));
+    if(!pool.length) pool=all;
+    const selected=shuffle(pool)[0];
+    if(!selected)return;
+    progress.recentConsultationIds=[...(progress.recentConsultationIds||[]),selected.id].slice(-30);
+    const theme=selected.consultation_theme||selected.category||'';
+    if(theme) progress.recentConsultationThemes=[...(progress.recentConsultationThemes||[]),theme].slice(-8);
+    saveProgress();
+    startCustomSession([selected],'오늘의 상담 · 1문제',false);
+  }
   function showDashboard(){app.dataset.page='home';app.classList.add('home-dashboard-mode');renderDashboard();document.querySelectorAll('.bottom-nav button[data-tab]').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab==='home'));window.scrollTo({top:0,behavior:'smooth'});}
 
   const wrappedBeginSession=beginSession;beginSession=function(...args){app.classList.remove('home-dashboard-mode');learningActive=true;const result=wrappedBeginSession(...args);const footer=document.querySelector('.footer-action');if(footer&&footer.style.display!=='none')footer.style.display='grid';return result;};
