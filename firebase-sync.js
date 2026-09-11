@@ -60,6 +60,15 @@ if(!config){
     return out;
   }
 
+  function mergeDue(a={},b={}){
+    const out={...a};
+    for(const [k,v] of Object.entries(b||{})){
+      const av=num(out[k]), bv=num(v);
+      out[k]=av&&bv?Math.min(av,bv):(av||bv);
+    }
+    return out;
+  }
+
   function mergeFeedback(a={},b={}){
     const out={...a};
     for(const [id,item] of Object.entries(b||{})){
@@ -105,6 +114,7 @@ if(!config){
       wrongQueue:mergeMapMax(remote.wrongQueue,local.wrongQueue),
       cardStats,
       confusionPairs:mergeMapMax(remote.confusionPairs,local.confusionPairs),
+      confusionReviewDue:mergeDue(remote.confusionReviewDue,local.confusionReviewDue),
       explanationFeedback:mergeFeedback(remote.explanationFeedback,local.explanationFeedback),
       feedbackHistory:mergeHistory(remote.feedbackHistory,local.feedbackHistory),
       recentQuestionIds:mergeRecent(local.recentQuestionIds,remote.recentQuestionIds)
@@ -121,6 +131,7 @@ if(!config){
       wrongQueue:mergeMapAdd(remote.wrongQueue,guest.wrongQueue),
       cardStats,
       confusionPairs:mergeMapAdd(remote.confusionPairs,guest.confusionPairs),
+      confusionReviewDue:mergeDue(remote.confusionReviewDue,guest.confusionReviewDue),
       explanationFeedback:mergeFeedback(remote.explanationFeedback,guest.explanationFeedback),
       feedbackHistory:mergeHistory(remote.feedbackHistory,guest.feedbackHistory),
       recentQuestionIds:mergeRecent(guest.recentQuestionIds,remote.recentQuestionIds)
