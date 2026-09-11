@@ -79,10 +79,20 @@
   }
 
   function shortKeyword(id){
+    const card=window.TAROTSTEP_BEGINNER_CARDS?.[id];
+    if(card?.evidence) return String(card.evidence).trim();
     const raw=String(keywordMap[id]||'').trim();
     if(!raw) return '';
     const parts=raw.split(/[·,\/]/).map(v=>v.trim()).filter(Boolean);
     return parts.slice(0,4).join(' · ');
+  }
+
+  function shortMeaning(id){
+    const card=window.TAROTSTEP_BEGINNER_CARDS?.[id];
+    if(card?.core) return String(card.core).trim();
+    const pool=questions.filter(q=>q.card_id===id&&q.explanation);
+    const source=String(pool[0]?.explanation||'').replace(/\s+/g,' ').trim();
+    return source ? source.split(/[.!?]/)[0].trim() : '';
   }
 
   function addChoiceComparison(q){
@@ -98,7 +108,8 @@
       .map(c=>{
         const name=cardMeta[c.value_id]?.name||c.text||c.value_id;
         const key=shortKeyword(c.value_id);
-        return {name,key,correct:Boolean(c.correct)};
+        const meaning=shortMeaning(c.value_id);
+        return {name,key,meaning,correct:Boolean(c.correct)};
       });
 
     if(items.length<3) return;
@@ -107,7 +118,8 @@
     box.className='choice-compare';
     box.innerHTML='<div class="choice-compare-title">보기 비교</div>'+
       items.map(item=>'<div class="choice-compare-row'+(item.correct?' is-answer':'')+'"><b>'+
-      (item.correct?'정답 · ':'')+item.name+'</b><span>'+ (item.key||'핵심 의미를 카드 탭에서 확인해 보세요.') +'</span></div>').join('');
+      (item.correct?'정답 · ':'')+item.name+'</b><span><strong>'+ (item.key||'핵심 키워드') +'</strong>'+
+      (item.meaning?'<small>'+item.meaning+'</small>':'')+'</span></div>').join('');
     explain.insertAdjacentElement('afterend',box);
   }
 
