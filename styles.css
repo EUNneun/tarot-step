@@ -422,8 +422,8 @@ body{padding:0}
 
 /* Real tarot card image in standard learning questions. */
 .card-visual{
-  width:104px;
-  height:176px;
+  width:156px;
+  height:264px;
   padding:0;
   border:1px solid #e2e5ee;
   border-radius:12px;
@@ -435,5 +435,5 @@ body{padding:0}
 .card-visual img{display:block;width:100%;height:100%;object-fit:cover}
 .card-visual.is-answer{margin-top:2px}
 @media(max-height:700px){
-  .card-visual{width:82px;height:139px;margin-bottom:12px}
+  .card-visual{width:123px;height:209px;margin-bottom:12px}
 }
