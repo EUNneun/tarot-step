@@ -110,12 +110,18 @@
     const user=window.TAROT_AUTH_USER;
     const avatar=user?.photoURL?`<img src="${escapeHtml(user.photoURL)}" alt="">`:'<span>🔮</span>';
     const accountName=user?(user.displayName||'TarotStep 학습자'):'게스트로 이용 중';
-    const accountDesc=user?(user.email||'Google 계정으로 동기화 중'):'학습 기록은 현재 이 기기에 저장됩니다. 로그인하면 계정에 합쳐져 다른 기기에서도 이어서 학습할 수 있습니다.';
+    const providerLabel=user?.providerId==='oidc.kakao'?'카카오':user?'Google':'';
+    const accountDesc=user?(user.email||`${providerLabel} 계정으로 동기화 중`):'학습 기록은 현재 이 기기에 저장됩니다. 로그인하면 계정에 합쳐져 다른 기기에서도 이어서 학습할 수 있습니다.';
     view.innerHTML=`
       <div class="subpage-title"><div><span>MY TAROTSTEP</span><h2>마이</h2></div></div>
       <div class="account-card">
         <div class="account-profile"><div class="account-avatar">${avatar}</div><div><div class="account-name">${escapeHtml(accountName)}</div><div class="account-email">${escapeHtml(accountDesc)}</div></div></div>
-        <button type="button" class="account-action primary" id="authActionBtn">${user?'Google 계정 로그아웃':'Google 로그인하고 기록 저장'}</button>
+        ${user
+          ? `<button type="button" class="account-action primary" id="authActionBtn">${providerLabel} 계정 로그아웃</button>`
+          : `<div class="login-actions">
+              <button type="button" class="account-action primary" id="authActionBtn">Google 로그인</button>
+              <button type="button" class="account-action kakao" id="kakaoAuthBtn"><span class="kakao-symbol">K</span> 카카오 로그인</button>
+            </div>`}
       </div>
       <section class="my-menu-card">
         ${user?.email?.toLowerCase()==='limiteun@gmail.com'?'<button type="button" class="my-menu-row" id="adminPageBtn"><span class="menu-icon">⚙</span><span><b>관리자</b><small>해설 개선요청과 피드백 히스토리 관리</small></span><span class="chevron">›</span></button>':''}
@@ -128,6 +134,11 @@
       const actions=window.TAROT_AUTH_ACTIONS;
       if(!actions){alert('로그인 기능을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.');return;}
       if(window.TAROT_AUTH_USER) await actions.logout(); else await actions.login();
+    });
+    document.getElementById('kakaoAuthBtn')?.addEventListener('click',async()=>{
+      const actions=window.TAROT_AUTH_ACTIONS;
+      if(!actions?.loginWithKakao){alert('카카오 로그인 기능을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.');return;}
+      await actions.loginWithKakao();
     });
   }
 
