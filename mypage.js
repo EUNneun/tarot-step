@@ -118,9 +118,11 @@
         <button type="button" class="account-action primary" id="authActionBtn">${user?'Google 계정 로그아웃':'Google 로그인하고 기록 저장'}</button>
       </div>
       <section class="my-menu-card">
+        ${user?.email?.toLowerCase()==='limiteun@gmail.com'?'<button type="button" class="my-menu-row" id="adminPageBtn"><span class="menu-icon">⚙</span><span><b>관리자</b><small>해설 개선요청과 피드백 히스토리 관리</small></span><span class="chevron">›</span></button>':''}
         <button type="button" class="my-menu-row" id="shareAppBtn"><span class="menu-icon">↗</span><span><b>TarotStep 공유하기</b><small>카카오톡, 메시지 등으로 친구에게 공유</small></span><span class="chevron">›</span></button>
       </section>`;
 
+    document.getElementById('adminPageBtn')?.addEventListener('click',()=>{location.href='admin.html';});
     document.getElementById('shareAppBtn')?.addEventListener('click',e=>shareApp(e.currentTarget));
     document.getElementById('authActionBtn')?.addEventListener('click',async()=>{
       const actions=window.TAROT_AUTH_ACTIONS;
