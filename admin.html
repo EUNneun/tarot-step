@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F7F8FC">
+<title>TarotStep 관리자</title>
+<link rel="stylesheet" href="admin.css?v=20260911-1">
+</head>
+<body>
+<header class="admin-top">
+  <a href="./" class="back">← TarotStep</a>
+  <div><b>관리자</b><span>해설 피드백 관리</span></div>
+  <button id="adminLogin" type="button">로그인</button>
+</header>
+<main class="admin-wrap">
+  <section id="adminGate" class="gate"><h1>관리자 확인 중</h1><p>관리자 계정으로 로그인하면 피드백 데이터를 확인할 수 있습니다.</p></section>
+  <section id="adminApp" hidden>
+    <div class="summary-grid">
+      <div><span>개선요청</span><strong id="needsCount">0</strong></div>
+      <div><span>도움됨</span><strong id="helpfulCount">0</strong></div>
+      <div><span>피드백 이벤트</span><strong id="eventCount">0</strong></div>
+      <div><span>피드백 사용자</span><strong id="userCount">0</strong></div>
+    </div>
+    <div class="toolbar">
+      <div class="tabs">
+        <button class="active" data-filter="needs">개선요청</button>
+        <button data-filter="helpful">👍 도움됨</button>
+        <button data-filter="history">전체 히스토리</button>
+      </div>
+      <input id="adminSearch" type="search" placeholder="문제 ID · 질문 · 카드 검색">
+    </div>
+    <div id="adminStatus" class="status"></div>
+    <div id="adminList" class="admin-list"></div>
+  </section>
+</main>
+<script src="data.js?v=20260910-3"></script>
+<script src="firebase-config.js?v=20260910-2"></script>
+<script type="module" src="admin.js?v=20260911-1"></script>
+</body>
+</html>
