@@ -55,6 +55,16 @@
     };
   }
 
+  function getCardSpec(cardId) {
+    return window.TAROTSTEP_BEGINNER_CARDS?.[cardId] || null;
+  }
+
+  function conceptLine(cardId) {
+    const spec=getCardSpec(cardId);
+    if(!spec) return '';
+    return `${spec.name}: ${spec.evidence}. ${spec.core}`;
+  }
+
   function getCardNameById(cardId) {
     if (!cardId) return '';
     if (cardNameCache[cardId]) return cardNameCache[cardId];
@@ -151,50 +161,43 @@
       tidy(original)
     ];
 
-    if (correct && correct.text && tidy(correct.text) !== cardName) {
-      lines.splice(2, 0, `정답: ${tidy(correct.text)}`);
-    }
-
     return lines.join('\n');
   }
 
   function buildSituationExplanation(q, original) {
     const core = parseCoreExplanation(original, q);
-    const correct = getCorrectChoice(q);
     const contrast = pickContrast(q);
-    const answerText = correct ? tidy(correct.text) : '';
-    const contextualAnswer = stripContextPrefix(answerText);
+    const spec = getCardSpec(q.card_id);
+    const cardName = spec?.name || core.name;
+    const coreText = spec?.core || core.detail || '카드의 기본 흐름을 질문 상황에 적용합니다.';
+    const evidence = spec?.evidence || core.keywords || '핵심 흐름';
 
     const lines = [
       '핵심 의미',
-      `${core.name}${core.keywords ? ` — ${core.keywords}` : ''}${core.detail ? `. ${core.detail}` : ''}`,
+      `${cardName} — ${evidence}. ${coreText}`,
       '',
       '정답 근거',
-      contextualAnswer
-        ? `${q.category} 질문에서는 “${contextualAnswer}”처럼 적용하는 것이 가장 자연스럽습니다. 카드의 기본 뜻을 질문의 상황에 맞게 옮긴 해석입니다.`
-        : `${q.category} 문맥에서 ${core.name}의 핵심 의미를 그대로 적용한 선택지가 정답입니다.`
+      `이 문제에서는 보기의 문장을 그대로 외우기보다 ‘${evidence}’가 상황 속에서 어떻게 드러나는지를 잡는 것이 중요합니다. ${q.category || '해당'} 질문에서도 카드의 기본 의미가 유지되는지를 기준으로 판단합니다.`
     ];
 
-    if (contrast) {
-      lines.push(
-        '',
-        '구분 포인트',
-        `${getCardNameById(contrast.value_id)}: ${stripContextPrefix(contrast.text)}`,
-        `${core.name}: ${core.detail || contextualAnswer}`,
-        '두 카드는 비슷해 보여도 질문에서 강조하는 초점이 다릅니다.'
-      );
+    if (contrast?.value_id) {
+      const contrastSpec=getCardSpec(contrast.value_id);
+      lines.push('', '구분 포인트');
+      if(contrastSpec){
+        lines.push(
+          `${contrastSpec.name} — ${contrastSpec.evidence}: ${contrastSpec.core}`,
+          `${cardName} — ${evidence}: ${coreText}`
+        );
+      } else {
+        lines.push(`${getCardNameById(contrast.value_id)}와는 질문에서 강조하는 초점과 변화 단계가 다릅니다.`);
+      }
     }
 
     if (core.caution) {
       lines.push('', '해석 주의', core.caution);
     } else if (q.category && q.category !== '기본') {
-      lines.push(
-        '',
-        '적용 포인트',
-        `카드의 기본 의미를 ${q.category} 상황에 적용하되, 한 장만으로 상대의 행동이나 최종 결과를 단정하지 않습니다.`
-      );
+      lines.push('', '적용 포인트', `한 장의 카드로 결과를 단정하기보다 ${evidence}가 현재 상황에서 어떤 태도·감정·판단·현실 조건으로 나타나는지 연결해서 읽습니다.`);
     }
-
     return lines.join('\n');
   }
 
@@ -250,10 +253,10 @@
       lines.push(
         '',
         '정답 근거',
-        `정답인 “${tidy(correct.text)}”는 세 카드의 역할을 함께 반영합니다. 현재 상황, 상대나 영향, 조언 중 한 부분만 과하게 확대하지 않고 전체 흐름을 연결한 상담입니다.`,
+        '상담형 문제에서는 한 카드만 강조하거나 결과를 단정하는 보기보다, 각 카드가 맡은 역할을 순서대로 연결하고 내담자가 확인할 수 있는 방향을 제시하는 해석이 적절합니다.',
         '',
-        '실제 상담 문장',
-        `“${tidy(correct.text)}”`
+        '읽는 순서',
+        '현재 상황 → 상대·영향 → 조언의 흐름으로 연결한 뒤, 서로 충돌하는 카드가 있다면 어느 카드가 상황 설명이고 어느 카드가 행동 지침인지 구분해 읽습니다.'
       );
     }
 
@@ -281,7 +284,9 @@
         `${core.name}${core.keywords ? ` — ${core.keywords}` : ''}${core.detail ? `. ${core.detail}` : ''}`,
         '',
         '정답 근거',
-        tidy(original)
+        getCardSpec(q.card_id)
+          ? `${getCardSpec(q.card_id).evidence}가 이 카드의 핵심 구분점입니다. 보기의 표현 자체보다 이 의미가 질문의 상황에서 어떻게 나타나는지를 확인하세요.`
+          : tidy(original).replace(/정답(?:인|은|이|가| 문장은?)?\s*[“"'][^”"']+[”"']?(?:입니다|이다)?\.?/g, '카드의 핵심 의미와 질문의 단서를 연결해 판단합니다.')
       ].join('\n');
     }
 
