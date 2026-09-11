@@ -62,7 +62,7 @@ async function load(){
     document.getElementById('needsCount').textContent=rows.filter(r=>r.kind==='needs').length;
     document.getElementById('helpfulCount').textContent=rows.filter(r=>r.kind==='helpful').length;
     document.getElementById('eventCount').textContent=rows.filter(r=>r.source==='event').length;
-    document.getElementById('userCount').textContent=new Set(rows.map(r=>r.user)).size;
+    document.getElementById('userCount').textContent=users.length;
     render();
   }catch(err){
     console.error(err);
