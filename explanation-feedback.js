@@ -42,6 +42,18 @@
     return progress.explanationFeedback[q.id]||{};
   }
 
+  function appendFeedbackHistory(q,type,at){
+    progress.feedbackHistory=Array.isArray(progress.feedbackHistory)?progress.feedbackHistory:[];
+    progress.feedbackHistory.push({
+      id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+      questionId:q.id,
+      type,
+      at,
+      ...metadata(q)
+    });
+    progress.feedbackHistory=progress.feedbackHistory.slice(-500);
+  }
+
   function metadata(q){
     return {
       questionType:q.type||'',
@@ -144,6 +156,7 @@
         checkedAt:prev.checkedAt||now,
         needsMoreAt:now
       };
+      appendFeedbackHistory(q,'needs-more',now);
       saveProgress();
       pencil.classList.add('is-checked');
       pencil.disabled=true;
@@ -163,6 +176,7 @@
         helpfulCount:Math.max(Number(prev.helpfulCount)||0,1),
         helpfulAt:now
       };
+      appendFeedbackHistory(q,'helpful',now);
       saveProgress();
       helpful.classList.add('is-checked');
       helpful.disabled=true;
