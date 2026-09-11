@@ -13,6 +13,7 @@ function loadProgress(){
     wrongQueue:{},
     cardStats:{},
     confusionPairs:{},
+    confusionReviewDue:{},
     recentQuestionIds:[]
   };
   try {
@@ -23,6 +24,7 @@ function loadProgress(){
       wrongQueue:saved.wrongQueue||{},
       cardStats:saved.cardStats||{},
       confusionPairs:saved.confusionPairs||{},
+      confusionReviewDue:saved.confusionReviewDue||{},
       recentQuestionIds:saved.recentQuestionIds||[]
     } : base;
   } catch(e) { return base; }
@@ -77,74 +79,69 @@ function addUnique(target, candidates, limit, used){
   }
 }
 
+function questionTouchesCards(q,cardIds){
+  if(!cardIds?.size) return false;
+  if(cardIds.has(q.card_id)) return true;
+  return Array.isArray(q.card_ids) && q.card_ids.some(id=>cardIds.has(id));
+}
+
+function dueConfusionCardIds(){
+  const now=Date.now();
+  const due=progress.confusionReviewDue||{};
+  return Object.entries(progress.confusionPairs||{})
+    .filter(([key,count]) => count>0 && (!due[key] || Number(due[key])<=now))
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,4)
+    .flatMap(([key])=>key.split('|'));
+}
+
 function sampleQuestions(preferredCardIds=[]){
-  const level = getLevelInfo();
-  const wrongIds = new Set(Object.keys(progress.wrongQueue).filter(id => progress.wrongQueue[id] > 0));
-  const recent = new Set(progress.recentQuestionIds || []);
-  const preferred = new Set(preferredCardIds);
-  const used = new Set();
-  const picked = [];
+  const recent=new Set(progress.recentQuestionIds||[]);
+  const used=new Set();
+  const picked=[];
+  const nonCounsel=q=>q.type!=='오늘의 상담';
+  const fresh=q=>!recent.has(q.id);
+  const preferred=new Set(preferredCardIds);
 
-  // 매 학습 세션에 상담형 문제를 정확히 1문제 포함
-  const counselingPool = shuffle(ALL_QUESTIONS.filter(q =>
-    q.type === '오늘의 상담' && !recent.has(q.id)
-  ));
-  const counselingFallback = shuffle(ALL_QUESTIONS.filter(q => q.type === '오늘의 상담'));
-  addUnique(picked, counselingPool.length ? counselingPool : counselingFallback, 1, used);
+  // 사용자는 학습방법을 고르지 않아도 된다. 10문제를 자동 구성한다.
+  // 상담 1 + 오답 2 + 헷갈림 2 + 오래 안 본 카드 1 + 취약 2 + 새 카드 2
+  const counseling=shuffle(ALL_QUESTIONS.filter(q=>q.type==='오늘의 상담'&&fresh(q)));
+  const counselingFallback=shuffle(ALL_QUESTIONS.filter(q=>q.type==='오늘의 상담'));
+  addUnique(picked,counseling.length?counseling:counselingFallback,1,used);
 
-  // 헷갈린 카드 복습을 시작한 경우 해당 카드 문제를 먼저 배치
   if(preferred.size){
-    const preferredPool = shuffle(ALL_QUESTIONS.filter(q =>
-      q.type !== '오늘의 상담' && preferred.has(q.card_id)
-    ));
-    addUnique(picked, preferredPool, Math.min(picked.length+6, SESSION_SIZE), used);
+    addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&questionTouchesCards(q,preferred))),Math.min(7,SESSION_SIZE),used);
+  }else{
+    const wrongIds=new Set(Object.keys(progress.wrongQueue||{}).filter(id=>progress.wrongQueue[id]>0));
+    addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&wrongIds.has(q.id))),Math.min(picked.length+2,SESSION_SIZE),used);
+
+    const confused=new Set(dueConfusionCardIds());
+    addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&questionTouchesCards(q,confused))),Math.min(picked.length+2,SESSION_SIZE),used);
+
+    const staleIds=Object.entries(progress.cardStats||{})
+      .filter(([,s])=>s.attempts>0)
+      .sort((a,b)=>(Number(a[1].lastSeenAt)||0)-(Number(b[1].lastSeenAt)||0))
+      .slice(0,10).map(([id])=>id);
+    const stale=new Set(staleIds);
+    addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&questionTouchesCards(q,stale))),Math.min(picked.length+1,SESSION_SIZE),used);
+
+    const weak=new Set(getWeakCardIds().slice(0,12));
+    addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&questionTouchesCards(q,weak))),Math.min(picked.length+2,SESSION_SIZE),used);
+
+    const seen=new Set(Object.keys(progress.cardStats||{}));
+    addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&q.card_id&&!seen.has(q.card_id))),Math.min(picked.length+2,SESSION_SIZE),used);
   }
 
-  // 1) 지난 오답은 최대 4문제 우선 복습
-  const wrongPool = shuffle(ALL_QUESTIONS.filter(q =>
-    q.type !== '오늘의 상담' && wrongIds.has(q.id)
-  ));
-  addUnique(picked, wrongPool, Math.min(picked.length+4, SESSION_SIZE), used);
+  // 남는 자리는 최근 출제를 피하면서 현재 레벨에 맞는 문제로 채운다.
+  const level=getLevelInfo();
+  const targetDifficulty=level.level>=3?'중급':'초급';
+  addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&q.difficulty===targetDifficulty)),SESSION_SIZE,used);
+  addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q))),SESSION_SIZE,used);
+  if(picked.length<SESSION_SIZE) addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q))),SESSION_SIZE,used);
 
-  // 2) 카드별 정답률이 낮은 취약 카드에서 최대 2문제
-  const weakIds = getWeakCardIds().slice(0,12);
-  const weakPool = shuffle(ALL_QUESTIONS.filter(q =>
-    q.type !== '오늘의 상담' && weakIds.includes(q.card_id) && !recent.has(q.id)
-  ));
-  addUnique(picked, weakPool, Math.min(picked.length+2, SESSION_SIZE), used);
-
-  // 3) 아직 한 번도 풀지 않은 카드도 섞기
-  const seenCards = new Set(Object.keys(progress.cardStats));
-  const unseenPool = shuffle(ALL_QUESTIONS.filter(q =>
-    q.type !== '오늘의 상담' && !seenCards.has(q.card_id) && !recent.has(q.id)
-  ));
-  addUnique(picked, unseenPool, Math.min(picked.length+2, SESSION_SIZE), used);
-
-  // 4) 현재 수준에 따라 초급/중급 비율 조정
-  const currentMid = picked.filter(q => q.difficulty === '중급').length;
-  const midNeed = Math.max(0, level.midTarget-currentMid);
-  const midPool = shuffle(ALL_QUESTIONS.filter(q =>
-    q.type !== '오늘의 상담' && q.difficulty==='중급' && !recent.has(q.id) && !used.has(q.id)
-  ));
-  addUnique(picked, midPool, Math.min(picked.length+midNeed, SESSION_SIZE), used);
-
-  const easyPool = shuffle(ALL_QUESTIONS.filter(q =>
-    q.type !== '오늘의 상담' && q.difficulty==='초급' && !recent.has(q.id) && !used.has(q.id)
-  ));
-  addUnique(picked, easyPool, SESSION_SIZE, used);
-
-  // 최근 세션 제외 때문에 부족한 경우 전체 풀에서 채움
-  if(picked.length < SESSION_SIZE){
-    const fallback = shuffle(ALL_QUESTIONS.filter(q =>
-      q.type !== '오늘의 상담' && !used.has(q.id)
-    ));
-    addUnique(picked, fallback, SESSION_SIZE, used);
-  }
-
-  const finalSession = shuffle(picked.slice(0,SESSION_SIZE))
-    .map(q => ({...q,isReview:wrongIds.has(q.id)}));
-
-  progress.recentQuestionIds = finalSession.map(q=>q.id);
+  const wrongIds=new Set(Object.keys(progress.wrongQueue||{}).filter(id=>progress.wrongQueue[id]>0));
+  const finalSession=shuffle(picked.slice(0,SESSION_SIZE)).map(q=>({...q,isReview:wrongIds.has(q.id)}));
+  progress.recentQuestionIds=[...(progress.recentQuestionIds||[]),...finalSession.map(q=>q.id)].slice(-80);
   saveProgress();
   return finalSession;
 }
@@ -158,6 +155,7 @@ function updateCardStat(cardId, isCorrect){
   } else {
     s.streak = 0;
   }
+  s.lastSeenAt = Date.now();
   progress.cardStats[cardId] = s;
 }
 
@@ -176,6 +174,8 @@ function recordConfusion(q, choice){
 
   const key=getPairKey(correctId,selectedId);
   progress.confusionPairs[key]=(progress.confusionPairs[key]||0)+1;
+  progress.confusionReviewDue=progress.confusionReviewDue||{};
+  progress.confusionReviewDue[key]=Date.now()+(24*60*60*1000);
 
   if(!sessionConfusions[key]){
     sessionConfusions[key]={count:0,correctId,selectedId};
@@ -385,7 +385,7 @@ function showSummary(){
   renderConfusionSummary();
 }
 
-function beginSession(preferredCardIds=[],label='오늘의 학습 · 문제은행 260'){
+function beginSession(preferredCardIds=[],label='오늘의 학습'){
   idx=0;
   correctCount=0;
   sessionConfusions={};
