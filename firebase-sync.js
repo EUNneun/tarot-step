@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const STORAGE_KEY='tarotstep_progress_v2';
@@ -27,6 +27,10 @@ if(!config){
   const db=getFirestore(app);
   const provider=new GoogleAuthProvider();
   provider.setCustomParameters({prompt:'select_account'});
+  const kakaoProvider=new OAuthProvider('oidc.kakao');
+  kakaoProvider.addScope('openid');
+  kakaoProvider.addScope('profile');
+  kakaoProvider.addScope('account_email');
   await setPersistence(auth,browserLocalPersistence);
 
   function readLocal(){
@@ -208,6 +212,20 @@ if(!config){
     }
   }
 
+  async function loginWithKakao(){
+    try { await signInWithPopup(auth,kakaoProvider); }
+    catch(err){
+      console.error('[TarotStep] Kakao login failed',err);
+      setSignedOut();
+      const code=err?.code||'unknown';
+      const hint=code==='auth/operation-not-allowed'
+        ? '\n\nFirebase Authentication에서 OIDC 공급자 oidc.kakao 설정이 필요합니다.'
+        : '';
+      alert((err?.message||'카카오 로그인에 실패했습니다.')+hint+'\n\n오류 코드: '+code);
+      throw err;
+    }
+  }
+
   let activeUser=null;
   let saveTimer=null;
 
@@ -226,7 +244,7 @@ if(!config){
   }
 
   gateButton?.addEventListener('click',()=>login().catch(()=>{}));
-  window.TAROT_AUTH_ACTIONS={login,logout};
+  window.TAROT_AUTH_ACTIONS={login,loginWithKakao,logout};
 
   onAuthStateChanged(auth,async user=>{
     activeUser=user;
