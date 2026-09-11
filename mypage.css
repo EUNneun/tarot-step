@@ -8,3 +8,8 @@
 .feedback-request-answer{margin-top:9px;font-size:13px;color:#6256aa}
 .feedback-request-answer b{margin-right:5px}
 .feedback-request-choices{margin-top:6px;font-size:12px;line-height:1.55;color:#7a8090}
+
+.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.account-action.kakao{background:#FEE500!important;color:#191919!important;border-color:#FEE500!important}
+.kakao-symbol{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#191919;color:#FEE500;font-size:11px;font-weight:900;margin-right:4px}
+@media(max-width:360px){.login-actions{grid-template-columns:1fr}}
