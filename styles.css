@@ -394,3 +394,11 @@ body{padding:0}
 @media (min-width:431px){
   .app{border-radius:0}
 }
+
+.choice-compare{margin-top:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.55);border:1px solid rgba(90,96,120,.12)}
+.choice-compare-title{font-size:13px;font-weight:700;margin-bottom:8px;color:inherit}
+.choice-compare-row{display:grid;grid-template-columns:minmax(84px,.8fr) 1.5fr;gap:8px;padding:6px 0;border-top:1px solid rgba(90,96,120,.10);font-size:12px;line-height:1.45}
+.choice-compare-row:first-of-type{border-top:0}
+.choice-compare-row b{font-weight:700}
+.choice-compare-row span{opacity:.88}
+.choice-compare-row.is-answer b{color:#5c50b0}
