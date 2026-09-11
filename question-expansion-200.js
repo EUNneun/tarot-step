@@ -8,6 +8,9 @@
   const allIds=Object.keys(DATA);
 
   function name(id){return meta[id]?.name||id;}
+  function spec(id){
+    return window.TAROTSTEP_BEGINNER_CARDS?.[id] || {name:name(id),core:'카드의 기본 의미를 상황에 적용하는 카드',evidence:'핵심 흐름'};
+  }
   function sameFamily(a,b){
     if(a[0]==='M') return b[0]==='M';
     return b[0]===a[0] || b.slice(1)===a.slice(1);
@@ -41,7 +44,7 @@
       id:qid,type:'실전상황→카드',category,difficulty:'초급',
       prompt:`다음 ${category} 상담 장면과 가장 가까운 카드는?\n“${DATA[id].scene}”`,
       card_id:id,correct_no:0,
-      explanation:`${name(id)}의 핵심 흐름을 실제 상황에 적용한 문제입니다. 이 장면은 “${DATA[id].scene}”에 초점이 있어 ${name(id)}이 가장 자연스럽습니다.`,
+      explanation:`${name(id)}는 ${spec(id).core}입니다. 이 상황에서는 ${spec(id).evidence}가 핵심 단서입니다. 장면의 분위기보다 행동·감정·생각·현실 중 어디에 초점이 있는지를 보면 비슷한 카드와 구분하기 쉽습니다.`,
       tags:'신규확장,실전상황,객관식,자동채점',
       choices:makeChoices(ids,id,x=>name(x),index)
     });
@@ -57,7 +60,7 @@
       id:qid,type:'카드→상담문장',category,difficulty:'중급',
       prompt:`${name(id)}이 ${category} 질문에서 나왔습니다. 가장 균형 잡힌 상담 문장은?`,
       card_id:id,correct_no:0,
-      explanation:`${name(id)}을 결과 예언처럼 단정하기보다 카드가 강조하는 태도와 흐름으로 옮기는 것이 중요합니다. 정답 문장은 “${DATA[id].advice}”입니다.`,
+      explanation:`${name(id)}는 ${spec(id).core}입니다. ${category} 상담에서는 결과를 단정하기보다 ${spec(id).evidence}의 흐름을 현실적인 태도와 행동으로 옮겨주는 것이 중요합니다. 카드의 의미를 과장하지 않고 내담자가 취할 수 있는 방향으로 연결한 보기가 적절합니다.`,
       tags:'신규확장,상담적용,객관식,자동채점',
       choices:makeChoices(ids,id,x=>DATA[x].advice,index+2)
     });
@@ -74,7 +77,7 @@
         id:qid,type:'같은숫자카드비교',category:'비교',difficulty:'중급',
         prompt:`같은 숫자·계급 카드끼리 비교해 보세요.\n“${DATA[id].scene}”에 가장 가까운 카드는?`,
         card_id:id,correct_no:0,
-        explanation:`같은 숫자나 계급이라도 슈트가 바뀌면 초점이 달라집니다. 이 장면은 ${name(id)}의 흐름인 “${DATA[id].scene}”를 가장 직접적으로 보여줍니다.`,
+        explanation:`${name(id)}의 핵심은 ${spec(id).evidence}입니다. 같은 숫자나 계급이라도 완드는 행동·열정, 컵은 감정·관계, 소드는 생각·판단, 펜타클은 현실·자원에 초점이 있습니다. 이 차이를 기준으로 장면이 어느 영역을 다루는지 판단하면 됩니다.`,
         tags:'신규확장,같은숫자비교,객관식,자동채점',
         choices:makeChoices(ids,id,x=>name(x),rank+s)
       });
