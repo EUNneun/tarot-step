@@ -402,3 +402,5 @@ body{padding:0}
 .choice-compare-row b{font-weight:700}
 .choice-compare-row span{opacity:.88}
 .choice-compare-row.is-answer b{color:#5c50b0}
+
+.choice-compare-row span{display:flex;flex-direction:column;gap:2px}.choice-compare-row span strong{font-size:11px;font-weight:850;color:#445064}.choice-compare-row span small{font-size:10px;line-height:1.45;color:#737b8b}.choice-compare-row.is-answer span strong{color:#5942c9}
