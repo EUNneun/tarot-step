@@ -233,6 +233,58 @@ function escapeHtml(value){
     .replaceAll("'",'&#039;');
 }
 
+function cardImageUrl(cardId){
+  return typeof window.TAROTSTEP_CARD_IMAGE==='function' ? window.TAROTSTEP_CARD_IMAGE(cardId) : '';
+}
+
+function defaultCardImageUrl(cardId){
+  return typeof window.TAROTSTEP_DEFAULT_CARD_IMAGE==='function' ? window.TAROTSTEP_DEFAULT_CARD_IMAGE(cardId) : '';
+}
+
+function questionShowsCardBeforeAnswer(q){
+  if(!q || q.type==='오늘의 상담' || !isTarotCardId(q.card_id)) return false;
+  if(String(q.type||'').startsWith('카드→')) return true;
+  const cardName=getCardName(q.card_id);
+  return Boolean(cardName && String(q.prompt||'').includes(cardName));
+}
+
+function renderCardVisual(q,revealAnswer=false){
+  const cv=document.getElementById('cardVisual');
+  if(!cv) return;
+  cv.innerHTML='';
+  cv.classList.remove('is-visible','is-answer');
+
+  if(!q || q.type==='오늘의 상담' || !isTarotCardId(q.card_id)){
+    cv.style.display='none';
+    return;
+  }
+
+  const shouldShow=questionShowsCardBeforeAnswer(q) || revealAnswer;
+  if(!shouldShow){
+    cv.style.display='none';
+    return;
+  }
+
+  const url=cardImageUrl(q.card_id);
+  const fallback=defaultCardImageUrl(q.card_id);
+  if(!url){
+    cv.style.display='none';
+    return;
+  }
+
+  const img=document.createElement('img');
+  img.src=url;
+  img.alt=getCardName(q.card_id);
+  img.loading='eager';
+  if(fallback && fallback!==url){
+    img.onerror=()=>{ img.onerror=null; img.src=fallback; };
+  }
+  cv.appendChild(img);
+  cv.style.display='grid';
+  cv.classList.add('is-visible');
+  if(revealAnswer && !questionShowsCardBeforeAnswer(q)) cv.classList.add('is-answer');
+}
+
 function refreshStats(){
   const level = getLevelInfo();
   const acc = progress.totalAnswered
@@ -258,8 +310,7 @@ function render(){
   document.getElementById('feedback').style.display='none';
   document.getElementById('nextBtn').style.display='none';
 
-  const cv=document.getElementById('cardVisual');
-  cv.style.display = q.type.startsWith('카드→') ? 'grid':'none';
+  renderCardVisual(q,false);
 
   const wrap=document.getElementById('choices');
   wrap.innerHTML='';
@@ -310,6 +361,7 @@ function select(c,btn,q){
   refreshStats();
 
   document.getElementById('explain').textContent=q.explanation;
+  renderCardVisual(q,true);
   fb.style.display='block';
   document.getElementById('nextBtn').style.display='block';
   document.getElementById('nextBtn').textContent=idx===session.length-1?'학습 결과 보기':'다음 문제';
@@ -416,3 +468,5 @@ document.getElementById('confusionReviewBtn').onclick=startConfusionReview;
 refreshStats();
 session=sampleQuestions();
 render();
+
+window.addEventListener('tarotstep:deck-changed',()=>renderCardVisual(session?.[idx],answered));
