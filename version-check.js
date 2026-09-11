@@ -1,5 +1,5 @@
 (()=>{
-  const CURRENT_VERSION='2026.09.11.13';
+  const CURRENT_VERSION='2026.09.11.14';
   const VERSION_URL='version.json';
   const RELOAD_GUARD_KEY='tarotstep_version_reload_target';
   const CHECK_THROTTLE_MS=1500;
