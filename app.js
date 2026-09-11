@@ -14,7 +14,9 @@ function loadProgress(){
     cardStats:{},
     confusionPairs:{},
     confusionReviewDue:{},
-    recentQuestionIds:[]
+    recentQuestionIds:[],
+    recentConsultationIds:[],
+    recentConsultationThemes:[]
   };
   try {
     const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
@@ -25,7 +27,9 @@ function loadProgress(){
       cardStats:saved.cardStats||{},
       confusionPairs:saved.confusionPairs||{},
       confusionReviewDue:saved.confusionReviewDue||{},
-      recentQuestionIds:saved.recentQuestionIds||[]
+      recentQuestionIds:saved.recentQuestionIds||[],
+      recentConsultationIds:saved.recentConsultationIds||[],
+      recentConsultationThemes:saved.recentConsultationThemes||[]
     } : base;
   } catch(e) { return base; }
 }
@@ -105,9 +109,23 @@ function sampleQuestions(preferredCardIds=[]){
 
   // 사용자는 학습방법을 고르지 않아도 된다. 10문제를 자동 구성한다.
   // 상담 1 + 오답 2 + 헷갈림 2 + 오래 안 본 카드 1 + 취약 2 + 새 카드 2
-  const counseling=shuffle(ALL_QUESTIONS.filter(q=>q.type==='오늘의 상담'&&fresh(q)));
-  const counselingFallback=shuffle(ALL_QUESTIONS.filter(q=>q.type==='오늘의 상담'));
-  addUnique(picked,counseling.length?counseling:counselingFallback,1,used);
+  const recentCounselIds=new Set(progress.recentConsultationIds||[]);
+  const recentCounselThemes=new Set(progress.recentConsultationThemes||[]);
+  const counselingPool=ALL_QUESTIONS.filter(q=>q.type==='오늘의 상담');
+  const counseling=shuffle(counselingPool.filter(q=>
+    fresh(q) &&
+    !recentCounselIds.has(q.id) &&
+    (!q.consultation_theme || !recentCounselThemes.has(q.consultation_theme))
+  ));
+  const counselingIdFallback=shuffle(counselingPool.filter(q=>!recentCounselIds.has(q.id)));
+  const counselingFallback=shuffle(counselingPool);
+  addUnique(picked,counseling.length?counseling:(counselingIdFallback.length?counselingIdFallback:counselingFallback),1,used);
+  const selectedCounseling=picked.find(q=>q.type==='오늘의 상담');
+  if(selectedCounseling){
+    progress.recentConsultationIds=[...(progress.recentConsultationIds||[]),selectedCounseling.id].slice(-30);
+    const theme=selectedCounseling.consultation_theme || selectedCounseling.category || '';
+    if(theme) progress.recentConsultationThemes=[...(progress.recentConsultationThemes||[]),theme].slice(-8);
+  }
 
   if(preferred.size){
     addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&questionTouchesCards(q,preferred))),Math.min(7,SESSION_SIZE),used);
