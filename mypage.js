@@ -46,27 +46,6 @@
       .sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,3)
       .map(([key,count])=>({cards:key.split('|'),count:Number(count)}));
   }
-  function getFeedbackRequests(p){
-    const qMap=new Map((window.TAROT_DATA?.questions||[]).map(q=>[q.id,q]));
-    return Object.entries(p.explanationFeedback||{})
-      .filter(([,item])=>Boolean(item?.needsMoreCount || item?.needsMoreAt || item?.count || item?.checkedAt))
-      .map(([id,item])=>({id,item,q:qMap.get(id)}))
-      .sort((a,b)=>String(b.item.needsMoreAt||b.item.checkedAt||'').localeCompare(String(a.item.needsMoreAt||a.item.checkedAt||'')));
-  }
-  function feedbackRequestHtml(entry){
-    const {id,item,q}=entry;
-    const choices=Array.isArray(q?.choices)?q.choices:[];
-    const answer=choices.find(x=>x.correct);
-    const choiceText=choices.map(x=>`${x.correct?'✓ ':'· '}${x.text||cardName(x.value_id)}`).join(' / ');
-    const date=item.needsMoreAt||item.checkedAt;
-    const dateText=date?new Date(date).toLocaleDateString('ko-KR'):'';
-    return `<div class="feedback-request-row">
-      <div class="feedback-request-meta"><span>${escapeHtml(id)}</span><span>${escapeHtml(q?.difficulty||item.difficulty||'')}</span><span>${escapeHtml(dateText)}</span></div>
-      <div class="feedback-request-question">${escapeHtml(q?.prompt||'현재 문제은행에서 찾을 수 없는 문제')}</div>
-      ${answer?`<div class="feedback-request-answer"><b>정답</b> ${escapeHtml(answer.text||cardName(answer.value_id))}</div>`:''}
-      ${choiceText?`<div class="feedback-request-choices">${escapeHtml(choiceText)}</div>`:''}
-    </div>`;
-  }
   function navIcon(type){
     const icons={
       home:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.8 12 3.8l8.5 7v8.4a1 1 0 0 1-1 1h-5.2v-5.5H9.7v5.5H4.5a1 1 0 0 1-1-1z"/></svg>',
@@ -105,7 +84,7 @@
     const p=readProgress(), level=levelInfo(p), total=Number(p.totalAnswered)||0, correct=Number(p.totalCorrect)||0;
     const accuracy=total?Math.round(correct/total*100):0, xp=Number(p.xp)||0, stats=p.cardStats||{};
     const seen=Object.keys(stats).filter(id=>(Number(stats[id]?.attempts)||0)>0).length;
-    const learning=Math.max(0,seen-level.mastered), unseen=Math.max(0,78-seen), weak=getWeakCards(p), confusions=getConfusions(p), feedbackRequests=getFeedbackRequests(p);
+    const learning=Math.max(0,seen-level.mastered), unseen=Math.max(0,78-seen), weak=getWeakCards(p), confusions=getConfusions(p);
 
     view.innerHTML=`
       <div class="subpage-title"><div><span>LEARNING REPORT</span><h2>나의 학습 리포트</h2></div><div class="level-chip">Lv.${level.level} ${level.name}</div></div>
@@ -116,8 +95,7 @@
       <div class="report-grid"><div><b>${total}</b><span>누적 문제</span></div><div><b>${total?accuracy+'%':'-'}</b><span>정답률</span></div><div><b>${xp}</b><span>XP</span></div></div>
       <section class="report-section"><div class="section-head"><h3>카드 학습 현황</h3><span>총 78장</span></div><div class="learning-grid"><div><b>${level.mastered}</b><span>숙련</span></div><div><b>${learning}</b><span>학습 중</span></div><div><b>${unseen}</b><span>아직 안 봄</span></div></div></section>
       <section class="report-section"><div class="section-head"><h3>나의 취약 카드 TOP3</h3><span>정답률 기준</span></div><div class="report-list">${weak.length?weak.map((w,i)=>{const rate=Math.round(w.correct/w.attempts*100);return `<div class="report-row"><div><div class="row-title">${i+1}. ${escapeHtml(cardName(w.id))}</div><div class="row-meta">${w.attempts}회 풀이 · ${w.correct}회 정답 · 연속 ${w.streak}</div></div><strong>${rate}%</strong></div>`;}).join(''):'<div class="empty-state">조금 더 학습하면 취약 카드가 자동으로 분석됩니다.</div>'}</div></section>
-      <section class="report-section"><div class="section-head"><h3>자주 헷갈린 카드 TOP3</h3><span>누적 기준</span></div><div class="report-list">${confusions.length?confusions.map((c,i)=>`<div class="report-row"><div><div class="row-title">${i+1}. ${escapeHtml(cardName(c.cards[0]))} ↔ ${escapeHtml(cardName(c.cards[1]))}</div><div class="row-meta">두 카드의 차이를 집중해서 복습해 보세요.</div></div><strong>${c.count}회</strong></div>`).join(''):'<div class="empty-state">아직 누적된 혼동 카드가 없습니다.</div>'}</div></section>
-      <section class="report-section feedback-request-section"><div class="section-head"><h3>해설 개선요청</h3><span>${feedbackRequests.length}건</span></div><p class="feedback-request-help">✎ 체크한 문제입니다. 정답뿐 아니라 헷갈리는 보기의 차이도 함께 보완할 수 있도록 확인합니다.</p><div class="feedback-request-list">${feedbackRequests.length?feedbackRequests.map(feedbackRequestHtml).join(''):'<div class="empty-state">아직 개선요청한 해설이 없습니다.</div>'}</div></section>`;
+      <section class="report-section"><div class="section-head"><h3>자주 헷갈린 카드 TOP3</h3><span>누적 기준</span></div><div class="report-list">${confusions.length?confusions.map((c,i)=>`<div class="report-row"><div><div class="row-title">${i+1}. ${escapeHtml(cardName(c.cards[0]))} ↔ ${escapeHtml(cardName(c.cards[1]))}</div><div class="row-meta">두 카드의 차이를 집중해서 복습해 보세요.</div></div><strong>${c.count}회</strong></div>`).join(''):'<div class="empty-state">아직 누적된 혼동 카드가 없습니다.</div>'}</div></section>`;
   }
   async function shareApp(btn){
     const payload={text:'TarotStep에서 타로카드 78장을 문제로 익혀보세요.',url:SHARE_URL};
