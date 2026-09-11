@@ -79,6 +79,17 @@ if(!config){
     return out;
   }
 
+  function mergeHistory(a=[],b=[]){
+    const all=[...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])];
+    const seen=new Set();
+    return all.filter(item=>{
+      const key=item?.id||`${item?.questionId||''}|${item?.type||''}|${item?.at||''}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((x,y)=>String(x?.at||'').localeCompare(String(y?.at||''))).slice(-500);
+  }
+
   function mergeRecent(localRecent=[],remoteRecent=[]){
     const combined=[...(Array.isArray(remoteRecent)?remoteRecent:[]),...(Array.isArray(localRecent)?localRecent:[])];
     return [...new Set(combined)].slice(-120);
@@ -95,6 +106,7 @@ if(!config){
       cardStats,
       confusionPairs:mergeMapMax(remote.confusionPairs,local.confusionPairs),
       explanationFeedback:mergeFeedback(remote.explanationFeedback,local.explanationFeedback),
+      feedbackHistory:mergeHistory(remote.feedbackHistory,local.feedbackHistory),
       recentQuestionIds:mergeRecent(local.recentQuestionIds,remote.recentQuestionIds)
     };
   }
@@ -110,6 +122,7 @@ if(!config){
       cardStats,
       confusionPairs:mergeMapAdd(remote.confusionPairs,guest.confusionPairs),
       explanationFeedback:mergeFeedback(remote.explanationFeedback,guest.explanationFeedback),
+      feedbackHistory:mergeHistory(remote.feedbackHistory,guest.feedbackHistory),
       recentQuestionIds:mergeRecent(guest.recentQuestionIds,remote.recentQuestionIds)
     };
   }
