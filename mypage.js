@@ -108,12 +108,12 @@
   function renderMy(){
     const view=document.getElementById('myView'); if(!view) return;
     const user=window.TAROT_AUTH_USER;
-    const avatar=user?.photoURL?`<img src="${escapeHtml(user.photoURL)}" alt="">`:'<span>🔮</span>';
+    const avatar=user?.photoURL?`<img src="${escapeHtml(user.photoURL)}" alt="">`:'<span>🔮</span>';\n    const accountName=user?(user.displayName||'TarotStep 학습자'):'게스트로 이용 중';\n    const accountDesc=user?(user.email||'Google 계정으로 동기화 중'):'학습 기록은 현재 이 기기에 저장됩니다. 로그인하면 계정에 합쳐져 다른 기기에서도 이어서 학습할 수 있습니다.';
     view.innerHTML=`
       <div class="subpage-title"><div><span>MY TAROTSTEP</span><h2>마이</h2></div></div>
       <div class="account-card">
-        <div class="account-profile"><div class="account-avatar">${avatar}</div><div><div class="account-name">${escapeHtml(user?.displayName||'TarotStep 학습자')}</div><div class="account-email">${escapeHtml(user?.email||'로그인하면 여러 기기에서 학습 기록이 동기화됩니다.')}</div></div></div>
-        <button type="button" class="account-action primary" id="authActionBtn">${user?'Google 계정 로그아웃':'Google 계정으로 로그인'}</button>
+        <div class="account-profile"><div class="account-avatar">${avatar}</div><div><div class="account-name">${escapeHtml(accountName)}</div><div class="account-email">${escapeHtml(accountDesc)}</div></div></div>
+        <button type="button" class="account-action primary" id="authActionBtn">${user?'Google 계정 로그아웃':'Google 로그인하고 기록 저장'}</button>
       </div>
       <section class="my-menu-card">
         <button type="button" class="my-menu-row" id="shareAppBtn"><span class="menu-icon">↗</span><span><b>TarotStep 공유하기</b><small>카카오톡, 메시지 등으로 친구에게 공유</small></span><span class="chevron">›</span></button>
