@@ -248,7 +248,7 @@ if(!config){
 
   onAuthStateChanged(auth,async user=>{
     activeUser=user;
-    window.TAROT_AUTH_USER=user?{uid:user.uid,displayName:user.displayName||'',email:user.email||'',photoURL:user.photoURL||''}:null;
+    window.TAROT_AUTH_USER=user?{uid:user.uid,displayName:user.displayName||'',email:user.email||'',photoURL:user.photoURL||'',providerId:user.providerData?.[0]?.providerId||''}:null;
     window.dispatchEvent(new CustomEvent('tarotstep:auth-changed',{detail:window.TAROT_AUTH_USER}));
 
     if(!user){
