@@ -25,16 +25,16 @@
       return `질문의 ‘${quoted}’라는 표현이 ${spec.evidence}의 흐름과 연결되는 핵심 단서입니다.`;
     }
     if (q.type === '키워드→카드' && quoted) {
-      return `제시된 ‘${quoted}’가 ${spec.evidence}를 직접 가리키기 때문에 이 카드가 정답입니다.`;
+      return `제시된 ‘${quoted}’는 ${spec.evidence}의 흐름을 보여줍니다. 이 단서를 카드의 기본 성격과 연결해 기억해 보세요.`;
     }
     if (q.type === '카드→키워드') {
-      return `정답 보기에서 드러나는 ${spec.evidence}가 이 카드의 대표 성격과 정확히 맞습니다.`;
+      return `이 카드에서는 ${spec.evidence}를 먼저 기억하면 비슷한 카드와 구분하기 쉽습니다.`;
     }
     if (q.type === '상황→카드') {
       return `상황에서 드러나는 ${spec.evidence}의 흐름이 이 카드를 고르는 핵심 근거입니다.`;
     }
     if (q.type === '카드→핵심문장') {
-      return `정답 문장에 나타난 ${spec.evidence}의 흐름이 이 카드의 핵심 의미와 이어집니다.`;
+      return `문장 속에서 ${spec.evidence}가 드러나는지를 보면 이 카드의 의미를 구분하기 쉽습니다.`;
     }
     return `이 문제에서는 ${spec.evidence}의 흐름을 잡는 것이 정답을 찾는 핵심입니다.`;
   }
