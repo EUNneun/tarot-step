@@ -3,19 +3,29 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const ADMIN_EMAIL='limiteun@gmail.com';
-const app=initializeApp(window.TAROT_FIREBASE_CONFIG);
-const auth=getAuth(app), db=getFirestore(app), provider=new GoogleAuthProvider();
-await setPersistence(auth,browserLocalPersistence);
-provider.setCustomParameters({prompt:'select_account'});
-
+const LOAD_TIMEOUT=8000;
+const authHealth=document.getElementById('healthAuth');
+const dbHealth=document.getElementById('healthDb');
+const appHealth=document.getElementById('healthApp');
+const retryBtn=document.getElementById('adminRetry');
 const gate=document.getElementById('adminGate'), panel=document.getElementById('adminApp'), login=document.getElementById('adminLogin');
 const list=document.getElementById('adminList'), status=document.getElementById('adminStatus'), search=document.getElementById('adminSearch');
-const qMap=new Map((window.TAROT_DATA?.questions||[]).map(q=>[q.id,q]));
+let auth,db,provider;
 let rows=[],filter='needs';
+const qMap=new Map((window.TAROT_DATA?.questions||[]).map(q=>[q.id,q]));
 
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 const date=v=>{if(!v)return '';try{return new Date(v).toLocaleString('ko-KR')}catch{return v}};
 const choiceText=q=>(q?.choices||[]).map(c=>`${c.correct?'✓ ':'· '}${c.text||c.value_id||''}`).join(' / ');
+const withTimeout=(promise,label)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timeout`)),LOAD_TIMEOUT))]);
+
+function setHealth(el,text,state){
+  if(!el)return;
+  el.textContent=text;
+  el.className=`health-pill ${state}`;
+}
+function showRetry(show=true){if(retryBtn)retryBtn.hidden=!show;}
+function showGate(title,message){gate.hidden=false;panel.hidden=true;gate.innerHTML=`<h1>${esc(title)}</h1><p>${esc(message)}</p>`;}
 
 function buildRows(users){
   const out=[];
@@ -54,43 +64,101 @@ function render(){
 }
 
 async function load(){
+  setHealth(dbHealth,'DB 확인중','checking');
+  showRetry(false);
   status.textContent='피드백 데이터를 불러오는 중...';
   try{
-    const snap=await getDocs(collection(db,'users'));
+    const snap=await withTimeout(getDocs(collection(db,'users')),'Firestore');
     const users=snap.docs.map(d=>({id:d.id,...d.data()}));
     rows=buildRows(users);
     document.getElementById('needsCount').textContent=rows.filter(r=>r.kind==='needs').length;
     document.getElementById('helpfulCount').textContent=rows.filter(r=>r.kind==='helpful').length;
     document.getElementById('eventCount').textContent=rows.filter(r=>r.source==='event').length;
     document.getElementById('userCount').textContent=users.length;
+    setHealth(dbHealth,`DB 정상 · ${users.length}명`,'ok');
     render();
   }catch(err){
-    console.error(err);
-    status.textContent='Firestore에서 사용자 피드백을 읽지 못했습니다. 관리자 계정의 users 컬렉션 조회 권한을 확인해 주세요.';
-    list.innerHTML='<div class="empty">데이터 조회 권한이 필요합니다.</div>';
+    console.error('[TarotStep Admin] Firestore load failed',err);
+    setHealth(dbHealth,err.message?.includes('timeout')?'DB 시간초과':'DB 오류','error');
+    status.textContent='피드백 데이터를 불러오지 못했습니다. 관리자 화면은 정상이며 DB 조회만 실패했습니다.';
+    list.innerHTML='<div class="empty">데이터 조회에 실패했습니다. 상단의 다시 시도를 눌러주세요.</div>';
+    showRetry(true);
   }
 }
 
-login.addEventListener('click',async()=>{
-  if(auth.currentUser){await signOut(auth);return;}
-  await signInWithPopup(auth,provider);
-});
-document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('[data-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;render();
-}));
-search.addEventListener('input',render);
+function bindUI(){
+  login.addEventListener('click',async()=>{
+    try{
+      if(auth.currentUser){await signOut(auth);return;}
+      await withTimeout(signInWithPopup(auth,provider),'Google login');
+    }catch(err){
+      console.error('[TarotStep Admin] login failed',err);
+      setHealth(authHealth,'AUTH 오류','error');
+      showGate('로그인 오류','Google 로그인을 다시 시도해 주세요.');
+      showRetry(true);
+    }
+  });
+  document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('[data-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;render();
+  }));
+  search.addEventListener('input',render);
+  retryBtn?.addEventListener('click',()=>{
+    if(auth?.currentUser) load();
+    else location.reload();
+  });
+}
 
-onAuthStateChanged(auth,user=>{
-  if(!user){
-    gate.hidden=false;panel.hidden=true;login.textContent='로그인';
-    gate.innerHTML='<h1>관리자 로그인</h1><p>TarotStep 관리자 계정으로 로그인해 주세요.</p>';
-    return;
+function init(){
+  try{
+    if(!window.TAROT_FIREBASE_CONFIG) throw new Error('Firebase config missing');
+    const app=initializeApp(window.TAROT_FIREBASE_CONFIG);
+    auth=getAuth(app);db=getFirestore(app);provider=new GoogleAuthProvider();
+    provider.setCustomParameters({prompt:'select_account'});
+    setHealth(appHealth,'APP 정상','ok');
+    setPersistence(auth,browserLocalPersistence).catch(err=>console.warn('[TarotStep Admin] persistence failed',err));
+    bindUI();
+
+    let authResolved=false;
+    const authTimer=setTimeout(()=>{
+      if(authResolved)return;
+      setHealth(authHealth,'AUTH 시간초과','error');
+      showGate('인증 확인 지연','인증 응답이 늦습니다. 다시 시도해 주세요.');
+      showRetry(true);
+    },LOAD_TIMEOUT);
+
+    onAuthStateChanged(auth,user=>{
+      authResolved=true;clearTimeout(authTimer);
+      if(!user){
+        setHealth(authHealth,'AUTH 로그아웃','idle');
+        setHealth(dbHealth,'DB 대기','idle');
+        gate.hidden=false;panel.hidden=true;login.textContent='로그인';
+        gate.innerHTML='<h1>관리자 로그인</h1><p>TarotStep 관리자 계정으로 로그인해 주세요.</p>';
+        return;
+      }
+      setHealth(authHealth,'AUTH 정상','ok');
+      login.textContent='로그아웃';
+      if((user.email||'').toLowerCase()!==ADMIN_EMAIL){
+        setHealth(authHealth,'AUTH 권한없음','error');
+        gate.hidden=false;panel.hidden=true;
+        gate.innerHTML='<h1>접근 권한이 없습니다</h1><p>관리자 계정으로 다시 로그인해 주세요.</p>';
+        return;
+      }
+      gate.hidden=true;panel.hidden=false;load();
+    },err=>{
+      authResolved=true;clearTimeout(authTimer);
+      console.error('[TarotStep Admin] auth listener failed',err);
+      setHealth(authHealth,'AUTH 오류','error');
+      showGate('인증 오류','Firebase 인증 초기화에 실패했습니다.');
+      showRetry(true);
+    });
+  }catch(err){
+    console.error('[TarotStep Admin] init failed',err);
+    setHealth(appHealth,'APP 오류','error');
+    setHealth(authHealth,'AUTH 대기','idle');
+    setHealth(dbHealth,'DB 대기','idle');
+    showGate('관리자 화면 초기화 오류','Firebase 설정을 확인해 주세요.');
+    showRetry(true);
   }
-  login.textContent='로그아웃';
-  if((user.email||'').toLowerCase()!==ADMIN_EMAIL){
-    gate.hidden=false;panel.hidden=true;
-    gate.innerHTML='<h1>접근 권한이 없습니다</h1><p>관리자 계정으로 다시 로그인해 주세요.</p>';
-    return;
-  }
-  gate.hidden=true;panel.hidden=false;load();
-});
+}
+
+init();
