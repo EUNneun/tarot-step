@@ -3,6 +3,8 @@
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 
   function enhanceCard(card){
+    if(card.dataset.choicesEnhanced==='1') return;
+
     const meta=[...card.querySelectorAll('.feedback-meta span')].map(el=>el.textContent.trim());
     const qid=meta.find(v=>/^Q\d+/.test(v));
     if(!qid) return;
@@ -28,6 +30,8 @@
         ${c.correct?'<span class="admin-choice-badge">정답</span>':''}
       </div>`;
     }).join('')}`;
+
+    card.dataset.choicesEnhanced='1';
   }
 
   function enhanceAll(){
@@ -36,7 +40,14 @@
 
   const list=document.getElementById('adminList');
   if(!list) return;
-  const observer=new MutationObserver(enhanceAll);
-  observer.observe(list,{childList:true,subtree:true});
+
+  const observer=new MutationObserver(mutations=>{
+    const hasNewCards=mutations.some(m=>[...m.addedNodes].some(node=>
+      node.nodeType===1 && (node.matches?.('.feedback-card') || node.querySelector?.('.feedback-card'))
+    ));
+    if(hasNewCards) enhanceAll();
+  });
+
+  observer.observe(list,{childList:true,subtree:false});
   enhanceAll();
 })();
