@@ -29,11 +29,16 @@
 
   function loadScript(src){
     return new Promise((resolve,reject)=>{
-      const existing=[...document.scripts].find(s=>s.src.includes(src.split('?')[0]));
-      if(existing){resolve();return;}
+      const key=src.split('?')[0];
+      const existing=[...document.scripts].find(s=>s.src.includes(key));
+      if(existing){
+        if(existing.dataset.loaded==='1') resolve();
+        else { existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); }
+        return;
+      }
       const s=document.createElement('script');
       s.src=src;
-      s.onload=resolve;
+      s.onload=()=>{s.dataset.loaded='1';resolve();};
       s.onerror=reject;
       document.body.appendChild(s);
     });
@@ -52,6 +57,7 @@
       ensureCss();
       await loadScript('advanced-mode.js?v=20260914-3');
       await loadScript('advanced-card-images.js?v=20260914-2');
+      await loadScript('advanced-ai-review.js?v=20260914-1');
       loaded=true;
       window.TAROTSTEP_ADVANCED?.show?.();
     }catch(err){
