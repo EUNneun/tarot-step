@@ -120,7 +120,6 @@
           ? `<button type="button" class="account-action primary" id="authActionBtn">${providerLabel} 계정 로그아웃</button>`
           : `<div class="login-actions">
               <button type="button" class="account-action primary" id="authActionBtn">Google 로그인</button>
-              <button type="button" class="account-action kakao" id="kakaoAuthBtn"><span class="kakao-symbol">K</span> 카카오 로그인</button>
             </div>`}
       </div>
       <section class="my-menu-card">
