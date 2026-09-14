@@ -437,3 +437,9 @@ body{padding:0}
 @media(max-height:700px){
   .card-visual{width:123px;height:209px;margin-bottom:12px}
 }
+
+.wrong-card-notes{margin-top:12px;padding-top:12px;border-top:1px solid rgba(90,96,120,.14)}
+.wrong-card-title{font-size:14px;font-weight:800;margin-bottom:8px;color:inherit}
+.wrong-card-row{display:grid;grid-template-columns:minmax(72px,.7fr) 1.6fr;gap:10px;padding:7px 0;font-size:14px;line-height:1.5}
+.wrong-card-row b{font-weight:800}
+.wrong-card-row span{opacity:.9}
