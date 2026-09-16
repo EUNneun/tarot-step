@@ -103,7 +103,7 @@ function sampleQuestions(preferredCardIds=[]){
   const recent=new Set(progress.recentQuestionIds||[]);
   const used=new Set();
   const picked=[];
-  const nonCounsel=q=>q.type!=='오늘의 상담';
+  const nonCounsel=q=>q.type!=='오늘의 상담' && q.type!=='카드→상황';
   const fresh=q=>!recent.has(q.id);
   const preferred=new Set(preferredCardIds);
 
@@ -126,6 +126,13 @@ function sampleQuestions(preferredCardIds=[]){
     const theme=selectedCounseling.consultation_theme || selectedCounseling.category || '';
     if(theme) progress.recentConsultationThemes=[...(progress.recentConsultationThemes||[]),theme].slice(-8);
   }
+
+  // 매 학습에 카드의 의미를 상황으로 적용하는 역방향 문제를 한 개 넣는다.
+  const reversePool=ALL_QUESTIONS.filter(q=>q.type==='카드→상황');
+  const preferredReverse=reversePool.filter(q=>!preferred.size || questionTouchesCards(q,preferred));
+  const reverseCandidates=preferredReverse.length?preferredReverse:reversePool;
+  addUnique(picked,shuffle(reverseCandidates.filter(fresh)),2,used);
+  if(picked.length<2) addUnique(picked,shuffle(reverseCandidates),2,used);
 
   if(preferred.size){
     addUnique(picked,shuffle(ALL_QUESTIONS.filter(q=>nonCounsel(q)&&fresh(q)&&questionTouchesCards(q,preferred))),Math.min(7,SESSION_SIZE),used);

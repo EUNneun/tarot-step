@@ -85,5 +85,21 @@
     }
   }
 
-  window.TAROTSTEP_EXPANSION={added:200,total:questions.length};
+  // 카드 이름을 보고 상황을 고르는 문제. 다른 카드의 상황을 보기로 넣어
+  // 키워드 암기에서 상황 적용으로 확장한다.
+  allIds.forEach((id,index)=>{
+    const ids=[id,...distractors(id,3)];
+    const qid='Q'+String(seq++).padStart(4,'0');
+    const choices=makeChoices(ids,id,x=>DATA[x].scene,index+1);
+    add({
+      id:qid,type:'카드→상황',category:'상황 적용',difficulty:'중급',
+      prompt:`“${name(id)}” 카드가 나타내는 상황에 가장 가까운 것은?`,
+      card_id:id,correct_no:choices.find(c=>c.correct).no,
+      explanation:`${name(id)}는 ${spec(id).core}입니다. 정답의 상황에서 ${spec(id).evidence}가 드러납니다. 다른 보기는 ${ids.filter(x=>x!==id).map(x=>`${name(x)}(${spec(x).evidence})`).join(' · ')}의 흐름에 가깝습니다.`,
+      tags:'역방향,상황적용,객관식,자동채점',
+      choices
+    });
+  });
+
+  window.TAROTSTEP_EXPANSION={added:200,reverseAdded:78,total:questions.length};
 })();
