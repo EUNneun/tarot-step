@@ -1,5 +1,6 @@
 const ALLOWED_ORIGINS = new Set([
   'https://eunneun.github.io',
+  'https://tarot.eunlab.com',
   'https://tarot-step-mw2v.vercel.app'
 ]);
 

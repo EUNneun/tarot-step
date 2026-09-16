@@ -1,6 +1,6 @@
 (()=>{
   const STORAGE_KEY='tarotstep_progress_v2';
-  const SHARE_URL='https://eunneun.github.io/tarot-step/';
+  const SHARE_URL='https://tarot.eunlab.com/';
   const MAJOR_NAMES=['바보','마법사','여사제','여황제','황제','교황','연인','전차','힘','은둔자','운명의 수레바퀴','정의','매달린 사람','죽음','절제','악마','탑','별','달','태양','심판','세계'];
   const SUITS={W:'완드',C:'컵',S:'소드',P:'펜타클'};
   const COURTS={11:'페이지',12:'나이트',13:'퀸',14:'킹'};
